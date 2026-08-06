@@ -23,7 +23,10 @@ Este proyecto proporciona un entorno estructurado para diseñar, probar e integr
 ```text
 Agentes_IA/
 ├── .agents/
-│   ├── project-mapper/    # Skill nativa para mapeo y compresión de contexto
+│   ├── project-mapper/ 
+├── .opencode/
+│   ├── skills/    # Skill
+│   ├──── prompt-toolkit/ nativa para mapeo y compresión de contexto
 │   └── rules/             # Reglas y configuraciones del entorno
 ├── README.md              # Documentación del proyecto
 └── ...
