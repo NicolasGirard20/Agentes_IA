@@ -37,23 +37,36 @@ NO activar cuando:
 ### Paso 1: Generar el mapa del proyecto
 Ejecuta SIEMPRE al inicio si no hay mapa reciente:
 
-```bash
+```powershell
 python .\.agents\project-mapper\scripts\generate_map.py --project . --output .\.agents\project-mapper\resources\project_map.json --force
 ```
+
+```bash
+python3 .agents/project-mapper/scripts/generate_map.py --project . --output .agents/project-mapper/resources/project_map.json --force
+```
+
 
 ### Paso 2: Inyectar contexto relevante (inject_relevant.py)
 Ejecuta de forma automática DESPUÉS del paso 1 y antes de cada tarea concreta para filtrar solo los archivos necesarios de acuerdo a la tarea.
 
-```bash
+```powershell
 python .\.agents\project-mapper\scripts\inject_relevant.py --map .\.agents\project-mapper\resources\project_map.json --query "descripción de tu tarea aquí" --output .\.agents\project-mapper\resources\context_task.json
+```
+
+```bash
+python3 .agents/project-mapper/scripts/inject_relevant.py --map .agents/project-mapper/resources/project_map.json --query "descripción de tu tarea aquí" --output .agents/project-mapper/resources/context_task.json
 ```
 (Puedes incluir flags como --max-files 10 o --dep-depth 2 si necesitas controlar la cantidad de dependencias a inyectar).
 
 ### Paso 3: Comprimir contexto (compress_context.py)
 Ejecuta SOLO de manera excepcional, cuando el mapa o los archivos inyectados son demasiado grandes (>4000 tokens estimados) o si el agente detecta que el contexto se ha vuelto demasiado largo.
 
-```bash
+```powershell
 python .\.agents\project-mapper\scripts\compress_context.py --input .\.agents\project-mapper\resources\project_map.json --output .\.agents\project-mapper\resources\project_map_compressed.json --ratio 0.4
+```
+
+```bash
+python3 .agents/project-mapper/scripts/compress_context.py --input .agents/project-mapper/resources/project_map.json --output .agents/project-mapper/resources/project_map_compressed.json --ratio 0.4
 ```
 (El ratio se puede ajustar a 0.3 para compresión más agresiva o 0.6 para ser más conservador).
 
