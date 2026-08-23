@@ -39,19 +39,19 @@ Usa la skill `project-mapper`.
 Ejecuta, si no existe un mapa reciente o si hace falta contexto real del repositorio:
 
 ```bash
-python3 .agents/project-mapper/scripts/generate_map.py --project . --output .agents/project-mapper/resources/project_map.json --force
+python3 .agents/skills/project-mapper/scripts/generate_map.py --project . --output .agents/skills/project-mapper/resources/project_map.json --force
 ```
 
 Luego inyecta solo el contexto relevante a la tarea:
 
 ```bash
-python3 .agents/project-mapper/scripts/inject_relevant.py --map .agents/project-mapper/resources/project_map.json --query "estructura del proyecto, arquitectura, rutas, capas, dependencias, patrones de diseño y convenciones del repositorio" --output .agents/project-mapper/resources/context_task.json --max-files 15
+python3 .agents/skills/project-mapper/scripts/inject_relevant.py --map .agents/skills/project-mapper/resources/project_map.json --query "estructura del proyecto, arquitectura, rutas, capas, dependencias, patrones de diseño y convenciones del repositorio" --output .agents/skills/project-mapper/resources/context_task.json --max-files 15
 ```
 
 Si el contexto es demasiado largo, aplica compresión de forma excepcional:
 
 ```bash
-python3 .agents/project-mapper/scripts/compress_context.py --input .agents/project-mapper/resources/project_map.json --output .agents/project-mapper/resources/project_map_compressed.json --ratio 0.4
+python3 .agents/skills/project-mapper/scripts/compress_context.py --input .agents/skills/project-mapper/resources/project_map.json --output .agents/skills/project-mapper/resources/project_map_compressed.json --ratio 0.4
 ```
 
 ### Paso 2: Validar el prompt de generación con prompt-toolkit
