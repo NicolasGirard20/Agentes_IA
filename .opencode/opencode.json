@@ -85,7 +85,7 @@
       "mode": "subagent",
       "model": "openrouter/anthropic/claude-haiku-4.5",
       "temperature": 0.1,
-      "prompt": "{file:./GIT.md}",
+      "prompt": "{file:./agent/GIT.md}",
       "permission": {
         "edit": "deny",
         "bash": {
