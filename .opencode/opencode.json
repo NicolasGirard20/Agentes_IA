@@ -1,0 +1,107 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "nvidia/z-ai/glm-5.2",
+  "small_model": "openrouter/deepseek/deepseek-v4-flash",
+  "autoupdate": "notify",
+  "compaction": {
+    "auto": true,
+    "reserved": 3000
+  },
+  "instructions": ["GIT.md"],
+  "provider": {
+    "nvidia": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "NVIDIA",
+      "options": {
+        "baseURL": "https://integrate.api.nvidia.com/v1"
+      },
+      "models": {
+        "z-ai/glm-5.2": {
+          "name": "GLM-5.2 (NVIDIA)"
+        }
+      }
+    },
+    "openrouter": {
+      "npm": "@openrouter/ai-sdk-provider",
+      "name": "OpenRouter",
+      "models": {
+        "deepseek/deepseek-v4-flash": { "name": "DeepSeek V4 Flash (fallback build)" },
+        "deepseek/deepseek-v4-pro": { "name": "DeepSeek V4 Pro" },
+        "moonshotai/kimi-k2.6": {
+          "name": "Kimi K2.6",
+          "reasoning": true,
+          "tool_call": true,
+          "limit": { "context": 262144, "output": 32768 },
+          "options": {
+            "thinking": { "type": "enabled", "budgetTokens": 5000 }
+          }
+        },
+        "anthropic/claude-haiku-4.5": {
+          "name": "Claude Haiku 4.5",
+          "options": {
+            "thinking": { "type": "enabled", "budgetTokens": 4000 }
+          }
+        },
+        "anthropic/claude-sonnet-5": {
+          "name": "Claude Sonnet 5",
+          "options": {
+            "thinking": { "type": "enabled", "budgetTokens": 14000 }
+          }
+        }
+      }
+    }
+  },
+  "agent": {
+    "build": {
+      "model": "nvidia/z-ai/glm-5.2",
+      "temperature": 0.2
+    },
+    "build-fallback": {
+      "description": "Respaldo de build si NVIDIA/GLM-5.2 falla, tiene rate limit, o corte de servicio. Cambiar 'build.model' a este valor manualmente si hace falta.",
+      "model": "openrouter/deepseek/deepseek-v4-flash",
+      "temperature": 0.2
+    },
+    "plan": {
+      "model": "openrouter/moonshotai/kimi-k2.6",
+      "temperature": 0.3,
+      "tools": {
+        "write": false,
+        "edit": false
+      }
+    },
+    "quick-review": {
+      "description": "Revisión rápida y dudas de dificultad moderada. Punto intermedio entre build/plan y deep-reasoning. No usar para arquitectura ni bugs persistentes.",
+      "model": "openrouter/anthropic/claude-haiku-4.5",
+      "temperature": 0.3
+    },
+    "deep-reasoning": {
+      "mode": "subagent",
+      "description": "Escalar SOLO si: (a) el problema toca arquitectura o múltiples módulos, (b) ya falló al menos un intento con otro modelo (incluido quick-review), (c) hay ambigüedad real entre varias soluciones válidas, o (d) el costo de un error es alto. Si es un fix acotado o bien definido, usar quick-review en su lugar.",
+      "model": "openrouter/anthropic/claude-sonnet-5",
+      "temperature": 0.4
+    },
+    "git": {
+      "description": "Maneja versionado con git: status, add, commit, push, branches, merges, tags. SIEMPRE valida contra GIT.md antes de escribir en el repo (bloquea si hay .env u otros archivos sensibles sin resolver).",
+      "mode": "subagent",
+      "model": "openrouter/anthropic/claude-haiku-4.5",
+      "temperature": 0.1,
+      "prompt": "{file:./GIT.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "git status*": "allow",
+          "git diff*": "allow",
+          "git log*": "allow",
+          "git branch*": "allow",
+          "git add*": "ask",
+          "git commit*": "ask",
+          "git push*": "ask",
+          "git merge*": "ask",
+          "git rebase*": "ask",
+          "git rm --cached*": "ask",
+          "*": "deny"
+        }
+      }
+    }
+  }
+}
