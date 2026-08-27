@@ -28,4 +28,4 @@ Para preparar un proyecto nuevo con esta configuración:
 bash .agents/init.sh
 ```
 
-Este script detecta si es la primera vez en el proyecto y ejecuta el scaffolding automático (`agent-init`), además de regenerar el mapa del proyecto si es necesario.
+`init.sh` verifica si existe `.opencode/config.json`; si no, ejecuta el scaffolding de `agent-init`. Luego regenera el mapa del proyecto con `project-mapper` si el mapa existente tiene más de 2 horas. También advierte si falta el validador de `prompt-toolkit`.
