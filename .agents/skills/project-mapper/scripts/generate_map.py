@@ -11,8 +11,15 @@ import ast
 import re
 import argparse
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Set, Any, Optional
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 
 LANGUAGE_MAP = {
@@ -172,6 +179,9 @@ class ProjectMapper:
         'dist', 'build', '.idea', '.vscode', '.agents', '.agent', 'coverage',
         '.tox', 'htmlcov', '.mypy_cache', '.ruff_cache', '.next', 'out',
         '.gitignore', '.dockerignore', '.env', '.env.local',
+        'bin', 'obj', 'packages', '.vs', '.nuget', 'TestResults',
+        '.angular', '.svelte-kit', '.astro', '.turbo', '.cache',
+        'vendor', 'target', 'Pods', 'DerivedData',
     }
     
     IGNORE_FILES = {
@@ -179,7 +189,7 @@ class ProjectMapper:
         '.jpg', '.jpeg', '.png', '.gif', '.svg', '.ico', '.woff', '.woff2',
         '.ttf', '.eot', '.mp3', '.mp4', '.wav', '.avi', '.mov', '.zip',
         '.tar', '.gz', '.rar', '.7z', '.pdf', '.doc', '.docx', '.xls',
-        '.lock', '.log', '.min.js', '.min.css',
+        '.lock', '.log', '.min.js', '.min.css', '.pdb', '.user', '.suo',
     }
     
     def __init__(self, project_path: Path):
@@ -298,7 +308,7 @@ class ProjectMapper:
         except Exception:
             return None
         
-        rel_path = str(file_path.relative_to(self.project_path))
+        rel_path = str(file_path.relative_to(self.project_path)).replace('\\', '/')
         suffix = file_path.suffix.lower()
         language = LANGUAGE_MAP.get(suffix, 'unknown')
         
@@ -419,7 +429,7 @@ class ProjectMapper:
         
         return {
             'project_name': self.project_path.name,
-            'generated_at': datetime.utcnow().isoformat() + 'Z',
+            'generated_at': datetime.now(timezone.utc).isoformat(),
             'total_files': len(self.files_data),
             'total_symbols': self.total_symbols,
             'architecture': architecture,

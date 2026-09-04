@@ -1,0 +1,44 @@
+{
+  "project": "{{PROJECT_NAME}}",
+  "csharp": {
+    "controllers": "Controllers/*Controller.cs",
+    "models": "Models/*.cs",
+    "views": "Views/{Controller}/{Action}.cshtml",
+    "razor_encoding": "utf-8-sig"
+  },
+  "nomenclature": {
+    "controllers": "*Controller.cs",
+    "models": "*Model.cs | *ViewModel.cs",
+    "views": "*.cshtml",
+    "folders": "PascalCase",
+    "code_language": "es",
+    "ui_language": "es"
+  },
+  "styling": {
+    "framework": "bootstrap",
+    "version": "5.3",
+    "ui_library": "bootstrap",
+    "icon_library": "bootstrap-icons-1.11.3",
+    "notifications_library": "sweetalert2"
+  },
+  "architecture": {
+    "pattern": "MVC (.NET Framework 4.8)",
+    "view_engine": "Razor",
+    "orm": "EntityFramework 6",
+    "controllers_path": "Controllers/",
+    "views_path": "Views/",
+    "models_path": "Models/",
+    "scripts_path": "Scripts/",
+    "content_path": "Content/"
+  },
+  "security": {
+    "forbid_secrets_in_code": true,
+    "validate_anti_forgery_token": true,
+    "secrets_file": "secrets.config"
+  },
+  "code_quality": {
+    "razor_bom_mandatory": true,
+    "lint_before_finish": false,
+    "no_new_deps_without_justification": true
+  }
+}

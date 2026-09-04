@@ -1,9 +1,3 @@
-
----
-trigger: always_on
----
-
-Project Mapper
 ---
 name: project-mapper
 description: Mapea la estructura completa de un proyecto, comprime el contexto con LLMLingua e inyecta solo las partes relevantes según la tarea. Actívala cuando el usuario necesite entender, refactorizar o modificar código que implique múltiples archivos.

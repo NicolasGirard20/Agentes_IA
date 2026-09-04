@@ -34,6 +34,7 @@ Según el stack detectado, elige el template más adecuado:
 - `nextjs-prisma/` → Next.js + Prisma + Tailwind + shadcn/ui
 - `react-vite/` → React + Vite + Tailwind
 - `vanilla-ts/` → Genérico TypeScript
+- `dotnet-mvc/` → ASP.NET MVC / .NET Framework + Razor
 
 Si el framework detectado **no tiene template dedicado** (Angular, Vue, Svelte, Astro, Solid, Nuxt, Remix), se usa el **fallback generativo**: `generate_framework_rules.py` genera un `coding-rules.json` específico del framework (nomenclatura, estructura de carpetas y convenciones propias) sin crear `AGENTS.md`, que queda para el usuario.
 
