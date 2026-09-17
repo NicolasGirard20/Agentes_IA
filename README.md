@@ -2,9 +2,6 @@
 
 Este repositorio contiene la **configuración de agentes y skills** utilizada para potenciar el flujo de trabajo con IA en proyectos de software.
 
-## ¿Qué es `.agents/`?
-
-La carpeta `.agents/` agrupa las **skills** (capacidades especializadas) que los agentes de IA pueden activar según la tarea. Cada skill es un módulo independiente con reglas, scripts y recursos propios.
 
 ### Skills disponibles
 
