@@ -29,7 +29,7 @@ Los agentes son roles especializados que colaboran durante el desarrollo. La con
 El flujo recomendado es:
 
 ```text
-orquestador → planificador → arquitecto → constructor → tester
+orquestador -> planificador -> arquitecto -> constructor -> tester
 ```
 
 `buscador` se incorpora únicamente cuando la tarea requiere documentación externa, comparar alternativas o verificar una decisión técnica actual. El `orquestador` debe solicitar la aprobación del plan antes de pasar a la arquitectura y la implementación.
