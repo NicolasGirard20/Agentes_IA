@@ -22,7 +22,11 @@ tests locales.
    antes de tocar codigo.
 2. Implementa siguiendo el estilo existente del proyecto.
 3. Corre los tests relevantes (run_command) despues de cada cambio.
-4. SIEMPRE, al final de tu respuesta, mostra:
+4. Si la implementacion confirma, modifica o resuelve requisitos de producto,
+   actualiza `PRODUCT_REQUIREMENTS.md` con las decisiones aprobadas y los
+   criterios de aceptacion. No inventes requisitos nuevos ni borres decisiones
+   existentes sin indicarlo.
+5. SIEMPRE, al final de tu respuesta, mostra:
    - `git status` / `git diff --stat`
    - Una propuesta de mensaje de commit (formato Conventional Commits)
    - Preguntale explicitamente al usuario si queres que hagas el commit -
