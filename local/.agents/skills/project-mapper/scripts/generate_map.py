@@ -448,6 +448,8 @@ def main():
     parser.add_argument('--project', '-p', type=str, default='.', help='Ruta al proyecto')
     parser.add_argument('--output', '-o', type=str, required=True, help='Ruta de salida del JSON')
     parser.add_argument('--force', '-f', action='store_true', help='Forzar regeneración')
+    parser.add_argument('--max-age-hours', type=float, default=2.0,
+                        help='Edad máxima del mapa existente antes de regenerarlo')
     
     args = parser.parse_args()
     
@@ -460,9 +462,11 @@ def main():
             with open(output_path, 'r', encoding='utf-8') as f:
                 existing = json.load(f)
             generated = datetime.fromisoformat(existing['generated_at'].replace('Z', '+00:00'))
-            age = (datetime.utcnow() - generated.replace(tzinfo=None)).total_seconds() / 3600
+            if generated.tzinfo is None:
+                generated = generated.replace(tzinfo=timezone.utc)
+            age = (datetime.now(timezone.utc) - generated).total_seconds() / 3600
             
-            if age < 2:
+            if age < args.max_age_hours:
                 print(f"✅ Mapa reciente ({age:.1f}h). Usando existente.")
                 print(f"   Archivo: {output_path}")
                 return

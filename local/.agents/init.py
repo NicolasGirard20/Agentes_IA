@@ -22,6 +22,7 @@ PROJECT_NAME = PROJECT_ROOT.name
 MAPPER_RESOURCES = PROJECT_ROOT / ".agents" / "skills" / "project-mapper" / "resources"
 MAP_FILE = MAPPER_RESOURCES / "project_map.json"
 CONFIG_FILE = PROJECT_ROOT / ".opencode" / "config.json"
+DESIGN_FILE = PROJECT_ROOT / ".agents" / "rules" / "DESIGN.md"
 
 print(f"=== Inicialización de Agente — {PROJECT_NAME} ===")
 
@@ -40,13 +41,36 @@ if not CONFIG_FILE.exists():
     else:
         print("WARN: agent-init no encontrado. Saltando scaffolding.")
 
-# 2. Verificar project-mapper
+    # 2. Verificar DESIGN.md incluso si la configuración ya existía
+    if not DESIGN_FILE.exists():
+        detect_script = PROJECT_ROOT / ".agents" / "skills" / "agent-init" / "scripts" / "detect_stack.py"
+        design_script = PROJECT_ROOT / ".agents" / "skills" / "agent-init" / "scripts" / "generate_design.py"
+        if detect_script.exists() and design_script.exists():
+            print("DESIGN.md no encontrado. Generando guía inicial de diseño...")
+            proc = subprocess.run(
+                [sys.executable, str(detect_script), str(PROJECT_ROOT)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=True,
+            )
+            subprocess.run(
+                [sys.executable, str(design_script), str(PROJECT_ROOT)],
+                input=proc.stdout,
+                text=True,
+                encoding="utf-8",
+                check=True,
+            )
+        else:
+            print("WARN: no se pudo generar DESIGN.md; scripts de agent-init incompletos")
+
+    # 3. Verificar project-mapper
 generate_map_script = PROJECT_ROOT / ".agents" / "skills" / "project-mapper" / "scripts" / "generate_map.py"
 if not generate_map_script.exists():
     print("ERROR: project-mapper no encontrado localmente")
     sys.exit(1)
 
-# 3. Generar mapa si no existe o tiene más de 2 horas (7200 segundos)
+# 4. Generar mapa si no existe o tiene más de 2 horas (7200 segundos)
 regenerate = True
 if MAP_FILE.exists():
     try:
@@ -72,7 +96,7 @@ if regenerate:
 else:
     print("Mapa reciente encontrado (< 2 horas). Saltando generación.")
 
-# 4. Validar prompt-toolkit
+# 5. Validar prompt-toolkit
 validator_rules = PROJECT_ROOT / ".agents" / "skills" / "prompt-toolkit" / "validator" / "rules.json"
 if not validator_rules.exists():
     print("WARN: prompt-toolkit validator no encontrado")

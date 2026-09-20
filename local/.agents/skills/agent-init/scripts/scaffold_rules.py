@@ -3,6 +3,7 @@
 
 import json
 import os
+import subprocess
 import sys
 
 if sys.platform == "win32":
@@ -322,6 +323,17 @@ def _generate_folder_tree(project_root, max_depth=2):
     return "\n".join(lines[:20]) if lines else "  (pendiente de escanear)"
 
 
+def generate_design_file(stack, project_root):
+    """Genera DESIGN.md sin sobrescribir decisiones del usuario."""
+    design_script = os.path.join(os.path.dirname(__file__), "generate_design.py")
+    subprocess.run(
+        [sys.executable, design_script, project_root],
+        input=json.dumps(stack),
+        text=True,
+        check=True,
+    )
+
+
 if __name__ == "__main__":
     project_root = sys.argv[1] if len(sys.argv) > 1 else "."
     stack_input = sys.stdin.read() if not sys.stdin.isatty() else "{}"
@@ -340,3 +352,5 @@ if __name__ == "__main__":
     with open(os.path.join(project_root, "AGENTS.md"), "w", encoding="utf-8") as f:
         f.write(agents_md)
     print("AGENTS.md generado")
+
+    generate_design_file(stack, project_root)

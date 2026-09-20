@@ -248,3 +248,12 @@ if __name__ == "__main__":
     with open(os.path.join(rules_dir, "coding-rules.json"), "w", encoding="utf-8") as f:
         json.dump(rules, f, indent=2, ensure_ascii=False)
     print("coding-rules.json generado (fallback por framework)")
+
+    design_script = os.path.join(os.path.dirname(__file__), "generate_design.py")
+    import subprocess
+    subprocess.run(
+        [sys.executable, design_script, project_root],
+        input=json.dumps(stack),
+        text=True,
+        check=True,
+    )

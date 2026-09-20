@@ -2,15 +2,19 @@
 trigger: always_on
 ---
 
-# Project Mapper — Skill Nativa Antigravity
+# Project Mapper
 
 ## Objetivo
 Reducir el costo de tokens del agente generando un mapa estructurado del proyecto, comprimiéndolo con LLMLingua e inyectando solo el contexto relevante para cada tarea específica.
 
-## Consideración
-Siempre consultar antes de leer la carpeta node_modules o el archivo pnpm-lock.yaml (si es que se encuentran presentes en el proyecto)
+## Consideraciones
 
-## CUÁNDO ACTIVAR ESTA SKILL (obligatorio)
+- Resolver la ubicación de la instalación: `.agents` o `local/.agents`.
+- Pedir confirmación antes de leer `node_modules` o `pnpm-lock.yaml`.
+- Usar el mapa para orientar la lectura, pero verificar decisiones en el código fuente y los tests.
+- No inventar arquitectura, patrones o convenciones que no estén respaldados por el proyecto.
+
+## Cuándo activar
 
 Esta skill DEBE activarse automáticamente cuando:
 
@@ -25,20 +29,20 @@ NO activar cuando:
 - Solo se edita 1 archivo que ya está abierto en contexto
 - El usuario dice explícitamente "no uses el mapper"
 
-## FLUJO DE TRABAJO OBLIGATORIO
+## Flujo de trabajo
 
 ### Paso 1: Generar el mapa del proyecto
-Ejecuta SIEMPRE al inicio si no hay mapa reciente:
+Ejecuta al inicio si no hay mapa o si está obsoleto:
 
 ```bash
-python .\.agents\skills\project-mapper\scripts\generate_map.py --project . --output .\.agents\skills\project-mapper\resources\project_map.json --force
+python .agents/skills/project-mapper/scripts/generate_map.py --project . --output .agents/skills/project-mapper/resources/project_map.json
 ```
 
 ### Paso 2: Inyectar contexto relevante (inject_relevant.py)
 Ejecuta de forma automática DESPUÉS del paso 1 y antes de cada tarea concreta para filtrar solo los archivos necesarios de acuerdo a la tarea.
 
 ```bash
-python .\.agents\skills\project-mapper\scripts\inject_relevant.py --map .\.agents\skills\project-mapper\resources\project_map.json --query "descripción de tu tarea aquí" --output .\.agents\skills\project-mapper\resources\context_task.json
+python .agents/skills/project-mapper/scripts/inject_relevant.py --map .agents/skills/project-mapper/resources/project_map.json --query "descripción de tu tarea aquí" --output .agents/skills/project-mapper/resources/context_task.json
 ```
 (Puedes incluir flags como --max-files 10 o --dep-depth 2 si necesitas controlar la cantidad de dependencias a inyectar).
 
@@ -46,13 +50,12 @@ python .\.agents\skills\project-mapper\scripts\inject_relevant.py --map .\.agent
 Ejecuta SOLO de manera excepcional, cuando el mapa o los archivos inyectados son demasiado grandes (>4000 tokens estimados) o si el agente detecta que el contexto se ha vuelto demasiado largo.
 
 ```bash
-python .\.agents\skills\project-mapper\scripts\compress_context.py --input .\.agents\skills\project-mapper\resources\project_map.json --output .\.agents\skills\project-mapper\resources\project_map_compressed.json --ratio 0.4
+python .agents/skills/project-mapper/scripts/compress_context.py --input .agents/skills/project-mapper/resources/project_map.json --output .agents/skills/project-mapper/resources/project_map_compressed.json --ratio 0.4
 ```
 (El ratio se puede ajustar a 0.3 para compresión más agresiva o 0.6 para ser más conservador).
 
-### Paso 4: Creación / Verificación del archivo DESIGN.md (si no existe)
-Si el archivo `DESIGN.md` no está presente en la carpeta `.agents` (o `.agents/rules/`):
-- El agente DEBE crearlo automáticamente a partir de la información y estructura analizadas del proyecto.
+### Paso 4: Verificación de DESIGN.md
+Consulta `DESIGN.md` si existe. Créalo solo cuando el usuario lo pida o cuando sea necesario documentar una decisión de diseño; debe basarse en evidencia, no en suposiciones.
 - **Contenido fundamental de `DESIGN.md`**:
   - **Arquitectura del Proyecto**: Estructura de carpetas, capas del sistema y organización del código.
   - **Patrones de Diseño**: Definición de los patrones arquitectónicos y de componentes detectados en el proyecto (ej. Atomic Design, Custom Hooks, Redux/Zustand, MVC, etc.).
