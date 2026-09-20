@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Genera coding-rules.json específico para frameworks sin template dedicado.
+"""Genera coding-rules.json y DESIGN.md para frameworks sin template dedicado.
 
-Recibe el stack detectado por detect_stack.py por stdin y genera SOLO
-.agents/rules/coding-rules.json (sin AGENTS.md, que queda para el usuario).
+Recibe el stack detectado por detect_stack.py por stdin y genera
+.agents/rules/coding-rules.json y .agents/rules/DESIGN.md.
 Si el framework no está en el diccionario, genera reglas genéricas.
 """
 

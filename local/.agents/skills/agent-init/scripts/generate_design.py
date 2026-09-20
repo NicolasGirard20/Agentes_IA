@@ -67,6 +67,12 @@ def main():
         print(f"DESIGN.md ya existe; se conserva: {output}")
         return
 
+    legacy_agents = project_root / "AGENTS.md"
+    if legacy_agents.exists():
+        output.write_text(legacy_agents.read_text(encoding="utf-8"), encoding="utf-8")
+        print(f"AGENTS.md migrado a DESIGN.md: {output}")
+        return
+
     output.write_text(generate_design(stack, str(project_root)), encoding="utf-8")
     print(f"DESIGN.md generado: {output}")
 

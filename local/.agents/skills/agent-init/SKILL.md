@@ -3,7 +3,7 @@ name: agent-init
 description: >-
   Scaffolding automático de configuración de agentes para cualquier proyecto.
   Detecta el stack tecnológico, genera .opencode/config.json, .agents/rules/coding-rules.json,
-  DESIGN.md y AGENTS.md con reglas de negocio. Se activa automáticamente en la primera sesión
+  DESIGN.md unificado con reglas de negocio, arquitectura y diseño. Se activa automáticamente en la primera sesión
   de un proyecto nuevo.
 ---
 
@@ -36,13 +36,12 @@ Según el stack detectado, elige el template más adecuado:
 - `vanilla-ts/` → Genérico TypeScript
 - `dotnet-mvc/` → ASP.NET MVC / .NET Framework + Razor
 
-Si el framework detectado **no tiene template dedicado** (Angular, Vue, Svelte, Astro, Solid, Nuxt, Remix), se usa el **fallback generativo**: `generate_framework_rules.py` genera un `coding-rules.json` específico del framework (nomenclatura, estructura de carpetas y convenciones propias) sin crear `AGENTS.md`, que queda para el usuario.
+Si el framework detectado **no tiene template dedicado** (Angular, Vue, Svelte, Astro, Solid, Nuxt, Remix), se usa el **fallback generativo**: `generate_framework_rules.py` genera un `coding-rules.json` y un `DESIGN.md` con reglas específicas del framework.
 
 ### Paso 3: Generar archivos
 - `.opencode/config.json` → Configuración técnica del agente
 - `.agents/rules/coding-rules.json` → Reglas estructuradas del proyecto
-- `.agents/rules/DESIGN.md` → Reglas de arquitectura y diseño
-- `AGENTS.md` → Reglas de negocio en markdown (solo si hay template dedicado o framework genérico)
+- `.agents/rules/DESIGN.md` → Documento unificado de negocio, arquitectura, diseño y convenciones
 
 ### Paso 4: Generar mapa inicial
 Ejecuta `project-mapper` para generar el primer mapa del proyecto.
@@ -51,13 +50,12 @@ Ejecuta `project-mapper` para generar el primer mapa del proyecto.
 ```
 .opencode/config.json
 .agents/rules/coding-rules.json
-AGENTS.md
 .agents/rules/DESIGN.md
 .agents/skills/project-mapper/resources/project_map.json
 ```
 
 ## Validación
 - Verificar que los JSON generados sean válidos.
-- Verificar que AGENTS.md tenga las secciones mínimas (si se generó).
-- Verificar que `.agents/rules/DESIGN.md` exista y no se haya sobrescrito si ya estaba personalizado.
+- Verificar que `.agents/rules/DESIGN.md` exista y tenga las secciones mínimas.
+- Verificar que `DESIGN.md` no se haya sobrescrito si ya estaba personalizado.
 - Si el stack no coincide con ningún template, se genera configuración genérica.

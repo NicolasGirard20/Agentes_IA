@@ -18,7 +18,7 @@ def generate_config(stack, project_root):
         "project": "{{PROJECT_NAME}}",
         "agent": {
             "on_session_start": ".agents/init.py",
-            "rules_source": "AGENTS.md",
+            "rules_source": ".agents/rules/DESIGN.md",
             "coding_rules": ".agents/rules/coding-rules.json"
         },
         "skills": {

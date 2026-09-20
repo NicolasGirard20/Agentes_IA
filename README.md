@@ -7,7 +7,7 @@ Este repositorio contiene la **configuración de agentes y skills** utilizada pa
 
 | Skill | ¿Para qué sirve? |
 |-------|------------------|
-| `agent-init` | Scaffolding automático al iniciar un proyecto nuevo. Detecta el stack tecnológico y genera los archivos base de configuración. Si el framework no tiene template dedicado (Angular, Vue, Svelte, Astro, Solid, Nuxt, Remix, etc.), genera reglas específicas de forma automática. |
+| `agent-init` | Scaffolding automático al iniciar un proyecto nuevo. Detecta el stack tecnológico y genera los archivos base de configuración, incluido el documento unificado `.agents/rules/DESIGN.md`. Si el framework no tiene template dedicado (Angular, Vue, Svelte, Astro, Solid, Nuxt, Remix, etc.), genera reglas específicas de forma automática. |
 | `project-mapper` | Mapea la estructura completa del proyecto, comprime el contexto e inyecta solo lo relevante para cada tarea. |
 | `prompt-toolkit` | Biblioteca de **templates de prompts** reutilizables y **validador de seguridad** (longitud, coherencia, detección de inyecciones). |
 | `improve-design` | Mejora el formato, la estructura y el diseño visual de documentos manteniendo el contenido original. |

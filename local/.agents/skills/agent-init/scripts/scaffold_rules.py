@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Genera coding-rules.json y AGENTS.md skeleton a partir del stack detectado."""
+"""Genera coding-rules.json y DESIGN.md a partir del stack detectado."""
 
 import json
 import os
-import subprocess
 import sys
 
 if sys.platform == "win32":
@@ -130,7 +129,7 @@ def generate_coding_rules(stack, project_root):
     return rules
 
 
-def generate_agents_md(stack, project_root):
+def generate_design_document(stack, project_root):
     framework = stack.get("framework", "unknown")
     styling = stack.get("styling", "unknown")
     ui_lib = stack.get("ui_library", "unknown")
@@ -215,7 +214,7 @@ Este proyecto cuenta con un sistema de configuración para agentes de IA. Los si
 ### Flujo de inicio de sesión
 1. El agente lee `.opencode/config.json` para conocer las skills y reglas del proyecto.
 2. Ejecuta `.agents/init.sh` que regenera el mapa del proyecto si es necesario.
-3. Consulta `AGENTS.md` como fuente de verdad para reglas de negocio, stack y convenciones.
+3. Consulta `.agents/rules/DESIGN.md` como fuente de verdad para reglas de negocio, stack y convenciones.
 4. Usa `.agents/rules/coding-rules.json` para validar que los prompts generados respeten las reglas del proyecto.
 5. Antes de enviar prompts críticos, los valida contra `.agents/skills/prompt-toolkit/validator/rules.json`.
 
@@ -296,7 +295,7 @@ npm run lint     # eslint
 
 ## Mantenimiento de este documento
 
-- Actualizar `AGENTS.md` siempre que cambien: estructura de carpetas, stack, convenciones, reglas de seguridad o comandos.
+- Actualizar `.agents/rules/DESIGN.md` siempre que cambien: estructura de carpetas, stack, convenciones, reglas de seguridad o comandos.
 - Reflejar cambios también en `.agents/rules/coding-rules.json`.
 - Si cambian rutas de skills o triggers, actualizar `.opencode/config.json`.
 - Fuente de verdad para cambios estructurales: ejecutar `.agents/init.sh` para regenerar el mapa antes de redactar.
@@ -323,24 +322,13 @@ def _generate_folder_tree(project_root, max_depth=2):
     return "\n".join(lines[:20]) if lines else "  (pendiente de escanear)"
 
 
-def generate_design_file(stack, project_root):
-    """Genera DESIGN.md sin sobrescribir decisiones del usuario."""
-    design_script = os.path.join(os.path.dirname(__file__), "generate_design.py")
-    subprocess.run(
-        [sys.executable, design_script, project_root],
-        input=json.dumps(stack),
-        text=True,
-        check=True,
-    )
-
-
 if __name__ == "__main__":
     project_root = sys.argv[1] if len(sys.argv) > 1 else "."
     stack_input = sys.stdin.read() if not sys.stdin.isatty() else "{}"
     stack = json.loads(stack_input) if stack_input.strip() else {}
 
     rules = generate_coding_rules(stack, project_root)
-    agents_md = generate_agents_md(stack, project_root)
+    design_document = generate_design_document(stack, project_root)
 
     rules_dir = os.path.join(project_root, ".agents", "rules")
     os.makedirs(rules_dir, exist_ok=True)
@@ -349,8 +337,16 @@ if __name__ == "__main__":
         json.dump(rules, f, indent=2, ensure_ascii=False)
     print("coding-rules.json generado")
 
-    with open(os.path.join(project_root, "AGENTS.md"), "w", encoding="utf-8") as f:
-        f.write(agents_md)
-    print("AGENTS.md generado")
-
-    generate_design_file(stack, project_root)
+    design_path = os.path.join(rules_dir, "DESIGN.md")
+    if os.path.exists(design_path):
+        print("DESIGN.md ya existe; se conserva")
+    elif os.path.exists(os.path.join(project_root, "AGENTS.md")):
+        with open(os.path.join(project_root, "AGENTS.md"), "r", encoding="utf-8") as source:
+            legacy_document = source.read()
+        with open(design_path, "w", encoding="utf-8") as target:
+            target.write(legacy_document)
+        print("AGENTS.md migrado a DESIGN.md")
+    else:
+        with open(design_path, "w", encoding="utf-8") as f:
+            f.write(design_document)
+        print("DESIGN.md generado")

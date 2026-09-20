@@ -51,9 +51,9 @@ esac
 echo "[2/4] Generando .opencode/config.json..."
 echo "$STACK_JSON" | "$PYTHON_BIN" "$SCRIPT_DIR/generate_config.py" "$PROJECT_ROOT"
 
-echo "[3/4] Generando coding-rules.json, AGENTS.md y DESIGN.md..."
+echo "[3/4] Generando coding-rules.json y DESIGN.md..."
 if [ -n "$USE_FRAMEWORK_FALLBACK" ]; then
-    echo "  Generando coding-rules.json específico de $FRAMEWORK (sin AGENTS.md)..."
+    echo "  Generando reglas específicas de $FRAMEWORK..."
     echo "$STACK_JSON" | "$PYTHON_BIN" "$SCRIPT_DIR/generate_framework_rules.py" "$PROJECT_ROOT"
 else
     echo "$STACK_JSON" | "$PYTHON_BIN" "$SCRIPT_DIR/scaffold_rules.py" "$PROJECT_ROOT"
@@ -101,8 +101,7 @@ echo ""
 echo "=== Scaffolding completado para: $(basename "$PROJECT_ROOT") ==="
 echo "  .opencode/config.json      → Configuración técnica"
 echo "  .agents/rules/coding-rules.json → Reglas estructuradas"
-echo "  AGENTS.md                  → Reglas de negocio"
 echo "  .agents/rules/DESIGN.md    → Diseño y arquitectura"
 echo "  .agents/skills/            → Skills locales (project-mapper, prompt-toolkit, agent-init)"
 echo ""
-echo "Personaliza AGENTS.md con la descripción y reglas específicas de tu proyecto."
+echo "Personaliza .agents/rules/DESIGN.md con las reglas específicas de tu proyecto."
