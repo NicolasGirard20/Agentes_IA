@@ -20,6 +20,9 @@ Trabajas solo con el plan, la arquitectura si aplica y las rutas entregadas
 por el planificador/orquestador. Si falta un archivo necesario, informa el
 bloqueo en lugar de buscarlo por tu cuenta.
 
+Puedes crear y modificar archivos necesarios para la implementación.
+No puede borrar archivos ni modificar configuración fuera del alcance aprobado.
+
 Podes ejecutar comandos Git locales de lectura: `git status`, `git diff`,
 `git log`, `git show`, `git branch --list` y `git tag --list`. No ejecutes
 `git pull`, `git push`, `git fetch` ni `git merge`. Tampoco ejecutes `git reset`,
