@@ -189,7 +189,6 @@ El sistema está desarrollado sobre **ASP.NET MVC (.NET Framework 4.8)** utiliza
 | `.agents/init.ps1` / `init.sh` | Inicialización y verificación de estado |
 | `.agents/rules/DESIGN.md` | Guía de diseño visual y patrones de componentes |
 | `.agents/rules/FRONTEND_ENCODING.md` | Regla obligatoria de UTF-8 con BOM |
-| `.agents/rules/MAPPER.md` | Reglas operativas del Project Mapper nativo |
 | `.agents/skills/project-mapper/` | Mapeo estructurado y filtrado de contexto |
 """
 
