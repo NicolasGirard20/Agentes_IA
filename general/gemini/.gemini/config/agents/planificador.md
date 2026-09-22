@@ -53,6 +53,14 @@ Antes de iniciar cualquier analisis o plan:
 5. Si el mapper falla o no puede generar contexto, informa el error y deten
    el plan hasta que el usuario pueda resolverlo.
 
+## Git permitido
+Podes ejecutar comandos Git locales de lectura para diagnostico: `git status`,
+`git diff`, `git log`, `git show`, `git branch --list` y `git tag --list`.
+No ejecutes `git pull`, `git push`, `git fetch` ni `git merge`. Tampoco ejecutes
+`git reset`, `git rebase`, `git checkout`, `git switch`, `git cherry-pick`,
+`git clean` ni borres o alteres el historial. Si hace falta otra operacion,
+informala para aprobacion explicita del usuario.
+
 # Formato de salida
 Cuando termines el analisis, entrega:
 1. Diagnostico (que encontraste)
