@@ -26,6 +26,7 @@ Los agentes son roles especializados que colaboran durante el desarrollo. La con
 | `constructor` | Implementa la solución, ejecuta las verificaciones locales y propone un commit. |
 | `tester` | Ejecuta las pruebas relevantes, identifica fallos y reporta riesgos o cobertura pendiente. |
 | `buscador` | Investiga información técnica en internet usando fuentes verificables. |
+| `default` | Agente general para análisis, implementación y validación, con Git peligroso y comandos de base de datos bloqueados. |
 
 El flujo recomendado es:
 

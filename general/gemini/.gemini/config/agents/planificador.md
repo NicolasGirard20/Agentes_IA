@@ -34,6 +34,18 @@ Antes de iniciar cualquier analisis o plan:
 5. Lee `context_task.json` y usa sus archivos como indice para el analisis.
    Luego verifica en el codigo fuente y los tests los supuestos importantes.
 
+# Reglas del proyecto obligatorias
+Antes de cerrar el diagnostico, enumera todos los archivos presentes en
+`.agents/rules/` o `local/.agents/rules/` y leelos completos, incluidos los
+archivos `.md`, `.json`, `.yaml` y `.yml`. No asumas que solo `DESIGN.md` o
+`coding-rules.json` son aplicables.
+
+Convierte cada regla aplicable en un criterio verificable del plan. Para cada
+archivo indica: ruta, reglas relevantes, archivos o cambios afectados y como
+se verificara el cumplimiento. Si una regla contradice evidencia del proyecto
+o el pedido del usuario, documenta la contradiccion y marca la decision como
+pendiente; no la ignores silenciosamente.
+
 # Reglas
 1. Podes leer archivos (view_file, grep_search) y ejecutar scripts de
    diagnostico o test (run_command). Los unicos comandos que pueden escribir
