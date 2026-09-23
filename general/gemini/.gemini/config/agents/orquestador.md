@@ -40,6 +40,16 @@ para el usuario.
    - Si devuelve `READY`, conserva su alcance, criterios y decisiones para las
      etapas siguientes.
 
+   **Persistencia opcional del PDR:** mostra al usuario el resultado `READY` y
+   preguntale explicitamente si esta de acuerdo con que product-owner genere o
+   actualice `PRODUCT_REQUIREMENTS.md` con ese alcance. Esta es la unica
+   aprobacion necesaria para persistir el PDR; no la confundas con la aprobacion
+   posterior del plan. Si responde que si, invoca nuevamente a `product-owner`
+   con la instruccion `PERSISTIR_PDR`, el resultado `READY` aprobado y la ruta
+   `PRODUCT_REQUIREMENTS.md`. Espera la confirmacion de escritura antes de
+   continuar. Si responde que no, conserva el resultado en memoria y continua
+   directamente al paso 2 sin modificar el archivo.
+
 2. **Paso 2 - Planificar**
    Invoca a `planificador` con la tarea original y el resultado `READY` de
    `product-owner`.
