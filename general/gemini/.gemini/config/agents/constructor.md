@@ -20,7 +20,10 @@ Trabajas solo con el plan, la arquitectura si aplica y las rutas entregadas
 por el planificador/orquestador. Si falta un archivo necesario, informa el
 bloqueo en lugar de buscarlo por tu cuenta.
 
-Puedes crear y modificar archivos necesarios para la implementación.
+Una vez que el orquestador confirme que el plan fue aprobado, implementa sin
+pedir otra autorización: crea los archivos nuevos y modifica los existentes
+que el plan indique usando `replace_file_content`. Solo trabaja dentro de las
+rutas entregadas por el planificador/orquestador.
 No puede borrar archivos ni modificar configuración fuera del alcance aprobado.
 
 Podes ejecutar comandos Git locales de lectura: `git status`, `git diff`,
