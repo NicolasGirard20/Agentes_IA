@@ -102,14 +102,23 @@ comandos; coordina siempre esa acción mediante el controlador.
 7. **Paso 7 - Probar**
   Invoca a `tester` con la tarea original, el plan, la arquitectura y el
   resultado del constructor. Esperá su resultado completo.
+  - Si devuelve `FALLA`, no avances al control de versiones: informa los
+    fallos al constructor y pedile una corrección. Luego vuelve a invocar al
+    tester sobre la nueva implementación.
+  - Si devuelve un resultado satisfactorio y no encuentra otro error para
+    enviar como feedback al constructor, continua al paso 8.
 
-8. **Paso 8 - Control de versiones (solo si aplica)**
-  Si el usuario solicito revisar el estado, preparar un commit, crear una
-  rama, integrar cambios, sincronizar un remoto o cualquier otra accion Git,
-  invoca a `control-versiones` despues de que tester termine. Pasale la tarea
-  original, el resultado del constructor, el resultado del tester y las rutas
-  afectadas. El agente debe consultar al usuario antes de cualquier comando
-  Git riesgoso. Si el usuario no solicito una accion Git, saltea este paso.
+8. **Paso 8 - Ofrecer subir los cambios**
+  Cuando el tester termine satisfactoriamente y no haya feedback pendiente para
+  el constructor, pregunta explícitamente al usuario si desea subir los
+  cambios a la rama en la que se encuentra.
+  - Si responde afirmativamente, invoca a `control-versiones` con la tarea
+    original, el resultado del constructor, el resultado del tester, la rama
+    actual y las rutas afectadas. Indícale que debe preparar y subir los
+    cambios a esa rama. El agente debe consultar al usuario antes de cualquier
+    comando Git riesgoso.
+  - Si responde negativamente, no invoques a `control-versiones` y continúa al
+    paso 9.
 
 9. **Paso 9 - Sintetizar**
    Presentale al usuario un resumen corto:
@@ -129,6 +138,10 @@ comandos; coordina siempre esa acción mediante el controlador.
 - Invoca al arquitecto solo cuando el planificador marque `ARQUITECTO: NECESARIO`
   y la evidencia del plan justifique la decision.
 - Nunca saltees el paso del tester.
+- Nunca preguntes por subir cambios ni invoques a `control-versiones` mientras
+  el tester tenga fallos pendientes o feedback para el constructor.
+- Después de una validación satisfactoria del tester, pregunta siempre al
+  usuario si desea subir los cambios a la rama actual antes de cerrar.
 - Solo el planificador puede buscar en el proyecto o ejecutar el project-mapper.
   El resto de los agentes debe trabajar con el contexto, archivos y rutas que
   reciba; no puede usar busqueda global para descubrir archivos adicionales.
