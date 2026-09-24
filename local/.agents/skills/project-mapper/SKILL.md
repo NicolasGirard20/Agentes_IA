@@ -43,6 +43,31 @@ python .agents/skills/project-mapper/scripts/generate_map.py --project . --outpu
 python3 .agents/skills/project-mapper/scripts/generate_map.py --project . --output .agents/skills/project-mapper/resources/project_map.json
 ```
 
+Opciones para reducir el mapa:
+
+```bash
+python3 .agents/skills/project-mapper/scripts/generate_map.py \
+  --project . --output /tmp/project_map.json --light --include-lines \
+  --exclude "docs/**" --exclude "fixtures/**" --force
+```
+
+`--light` conserva únicamente `path`, `summary`, `imports`, `exports` y
+`complexity` por archivo. `--include-lines` es optativo y agrega líneas solo a
+clases y funciones. Por defecto se excluyen lockfiles, `node_modules`,
+`dist/build/.next`, binarios, logs, archivos minificados y directorios ocultos.
+Se pueden repetir patrones adicionales con `--exclude`.
+
+El extractor Python usa `ast`. Para TS/TSX se usan patrones conservadores sin
+dependencias: declaraciones `function`, flechas con forma inequívoca y
+métodos. Para análisis semántico completo convendría migrar a tree-sitter o
+ts-morph, pero no es necesario para generar este índice liviano.
+
+Smoke test:
+
+```bash
+python3 .agents/skills/project-mapper/tests/test_generate_map.py
+```
+
 
 ### Paso 2: Inyectar contexto relevante (inject_relevant.py)
 Ejecuta de forma automática DESPUÉS del paso 1 y antes de cada tarea concreta para filtrar solo los archivos necesarios de acuerdo a la tarea.
@@ -55,6 +80,13 @@ python .\.agents\skills\project-mapper\scripts\inject_relevant.py --map .\.agent
 python3 .agents/skills/project-mapper/scripts/inject_relevant.py --map .agents/skills/project-mapper/resources/project_map.json --query "descripción de tu tarea aquí" --output .agents/skills/project-mapper/resources/context_task.json
 ```
 (Puedes incluir flags como `--max-files 10` o `--dep-depth 2` si necesitas controlar la cantidad de dependencias a inyectar). Si la skill está instalada en `local/.agents`, sustituye `.agents` por `local/.agents`.
+
+Opciones adicionales de `inject_relevant.py`:
+
+- `--light`: excluye funciones y clases del contexto.
+- `--include-dependents`: incluye archivos que importan a los seleccionados.
+- `--min-score 2`: exige un puntaje mínimo de relevancia.
+- El selector normaliza acentos y nombres `camelCase`/`snake_case`, y ordena empates de forma determinista.
 
 ### Paso 3: Comprimir contexto (compress_context.py)
 Ejecuta SOLO de manera excepcional, cuando el mapa o los archivos inyectados son demasiado grandes (>4000 tokens estimados) o si el agente detecta que el contexto se ha vuelto demasiado largo.

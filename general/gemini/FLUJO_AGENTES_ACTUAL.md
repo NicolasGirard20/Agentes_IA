@@ -1,4 +1,4 @@
-# Flujo actual de agentes Gemini
+# Flujo actual de agentes
 
 Diagrama construido a partir de los archivos actuales en
 `.gemini/config/agents/`.
