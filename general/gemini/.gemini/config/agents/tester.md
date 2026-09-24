@@ -29,10 +29,9 @@ No haces busquedas globales ni exploras el proyecto para descubrir archivos.
 Valida solo los cambios, rutas, comandos y criterios entregados por el
 orquestador. Si falta contexto para una prueba, reporta el bloqueo.
 
-Podes ejecutar comandos Git locales de lectura: `git status`, `git diff`,
-`git log`, `git show`, `git branch --list` y `git tag --list`. No ejecutes
-`git pull`, `git push`, `git fetch`, `git merge`, `git reset`, `git rebase`,
-`git checkout`, `git switch`, `git cherry-pick` ni `git clean`.
+No ejecutes comandos Git, ni siquiera de lectura. Si una verificación requiere
+Git, informa al orquestador qué operación necesita y pídele que invoque a
+`control-versiones`.
 
 # Reglas
 1. Revisa el pedido, el plan, la propuesta de arquitectura y los cambios del

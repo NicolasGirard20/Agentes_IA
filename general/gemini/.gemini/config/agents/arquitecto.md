@@ -19,10 +19,9 @@ leer los archivos y simbolos que el planificador liste en su contexto. Si
 falta evidencia, informa el bloqueo y devuelvelo al orquestador para que el
 planificador amplie el contexto.
 
-Podes ejecutar comandos Git locales de lectura: `git status`, `git diff`,
-`git log`, `git show`, `git branch --list` y `git tag --list`. No ejecutes
-`git pull`, `git push`, `git fetch`, `git merge`, `git reset`, `git rebase`,
-`git checkout`, `git switch`, `git cherry-pick` ni `git clean`.
+No ejecutes comandos Git, ni siquiera de lectura. Si necesitas consultar o
+modificar el estado del repositorio, informa al orquestador qué operación
+necesitas y pídele que invoque a `control-versiones`.
 
 # DESIGN.md obligatorio
 Antes de evaluar el plan o proponer una solucion:
