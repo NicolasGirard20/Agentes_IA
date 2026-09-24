@@ -9,6 +9,7 @@ import json
 import argparse
 import re
 import unicodedata
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Any, Set
 
@@ -144,11 +145,72 @@ class RelevantContextInjector:
                 break
         
         return result
+
+    @staticmethod
+    def _estimated_tokens(value: Any) -> int:
+        return len(json.dumps(value, ensure_ascii=False)) // 4
+
+    def assess_efficiency(self, query: str, context: Dict[str, Any],
+                          map_token_limit: int = 4000,
+                          context_token_limit: int = 4000,
+                          max_expansion_ratio: float = 3.0) -> Dict[str, Any]:
+        """Diagnostica si la selección probablemente sea poco eficiente."""
+        query_terms = self._terms(query)
+        direct_matches = context['direct_matches']
+        total_files = context['total_relevant_files']
+        expansion_ratio = total_files / max(direct_matches, 1)
+        warnings: List[str] = []
+        recommendations: List[str] = []
+
+        map_tokens = self._estimated_tokens(self.project_map)
+        if map_tokens > map_token_limit:
+            warnings.append('project_map grande para una selección frecuente')
+            recommendations.append('comprimir el mapa o usar --light')
+        if len(query_terms) < 2:
+            warnings.append('consulta con poca información para ranking léxico')
+            recommendations.append('describir dominio, archivo, símbolo o comportamiento')
+        if direct_matches == 0:
+            warnings.append('no se encontraron coincidencias directas')
+            recommendations.append('reformular la consulta o no usar el mapper')
+        if context['estimated_tokens'] > context_token_limit:
+            warnings.append('contexto seleccionado supera el presupuesto de tokens')
+            recommendations.append('reducir --max-files/--dep-depth o usar --light')
+        if expansion_ratio > max_expansion_ratio and direct_matches > 0:
+            warnings.append('las dependencias expanden demasiado la selección')
+            recommendations.append('probar --no-deps o reducir --dep-depth')
+
+        generated_at = self.project_map.get('generated_at')
+        if generated_at:
+            try:
+                timestamp = datetime.fromisoformat(generated_at.replace('Z', '+00:00'))
+                age_hours = (datetime.now(timezone.utc) - timestamp).total_seconds() / 3600
+                if age_hours > 2:
+                    warnings.append('mapa posiblemente obsoleto')
+                    recommendations.append('regenerar project_map.json')
+            except ValueError:
+                warnings.append('fecha de generación del mapa no válida')
+
+        status = 'BYPASS' if direct_matches == 0 else ('WARN' if warnings else 'OK')
+        return {
+            'status': status,
+            'warnings': warnings,
+            'recommendations': recommendations,
+            'metrics': {
+                'query_terms': len(query_terms),
+                'map_tokens_estimated': map_tokens,
+                'context_tokens_estimated': context['estimated_tokens'],
+                'direct_matches': direct_matches,
+                'total_relevant_files': total_files,
+                'dependency_expansion_ratio': round(expansion_ratio, 2),
+            },
+        }
     
     def build_context(self, query: str, include_dependencies: bool = True, 
                      dep_depth: int = 2, max_files: int = 15,
                      include_dependents: bool = False, light: bool = False,
-                     min_score: float = 0.0) -> Dict[str, Any]:
+                     min_score: float = 0.0, map_token_limit: int = 4000,
+                     context_token_limit: int = 4000,
+                     max_expansion_ratio: float = 3.0) -> Dict[str, Any]:
         """Construye el contexto relevante para la tarea."""
         
         # 1. Archivos directamente relevantes
@@ -191,7 +253,7 @@ class RelevantContextInjector:
             if len(parts) > 1:
                 relevant_dirs.add(parts[0])
         
-        return {
+        context = {
             'query': query,
             'generated_at': self.project_map.get('generated_at'),
             'project_name': self.project_map.get('project_name'),
@@ -208,6 +270,10 @@ class RelevantContextInjector:
             'injection_strategy': 'selective-light' if light else 'selective',
             'estimated_tokens': len(json.dumps(context_files, ensure_ascii=False)) // 4,
         }
+        context['efficiency'] = self.assess_efficiency(
+            query, context, map_token_limit, context_token_limit,
+            max_expansion_ratio)
+        return context
 
 
 def main():
@@ -224,6 +290,12 @@ def main():
                         help='Excluir detalle de funciones y clases')
     parser.add_argument('--min-score', type=float, default=0.0,
                         help='Puntaje mínimo de relevancia')
+    parser.add_argument('--map-token-limit', type=int, default=4000,
+                        help='Umbral de advertencia para el tamaño estimado del mapa')
+    parser.add_argument('--context-token-limit', type=int, default=4000,
+                        help='Presupuesto de advertencia para el contexto seleccionado')
+    parser.add_argument('--max-expansion-ratio', type=float, default=3.0,
+                        help='Máxima relación entre archivos seleccionados y coincidencias directas')
     
     args = parser.parse_args()
 
@@ -233,6 +305,10 @@ def main():
         parser.error('--dep-depth no puede ser negativo')
     if args.min_score < 0:
         parser.error('--min-score no puede ser negativo')
+    if args.map_token_limit < 1 or args.context_token_limit < 1:
+        parser.error('los límites de tokens deben ser mayores que 0')
+    if args.max_expansion_ratio < 1:
+        parser.error('--max-expansion-ratio debe ser mayor o igual que 1')
     
     map_path = Path(args.map).resolve()
     output_path = Path(args.output).resolve()
@@ -251,6 +327,9 @@ def main():
         include_dependents=args.include_dependents,
         light=args.light,
         min_score=args.min_score,
+        map_token_limit=args.map_token_limit,
+        context_token_limit=args.context_token_limit,
+        max_expansion_ratio=args.max_expansion_ratio,
     )
     
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -264,6 +343,12 @@ def main():
     print(f"   📊 Total archivos en contexto: {context['total_relevant_files']}")
     print(f"   🔢 Tokens estimados: ~{context['estimated_tokens']}")
     print(f"   💡 Estrategia: {context['injection_strategy']}")
+    efficiency = context['efficiency']
+    print(f"   ⚖️ Eficiencia: {efficiency['status']}")
+    for warning in efficiency['warnings']:
+        print(f"   ⚠️ {warning}")
+    for recommendation in efficiency['recommendations']:
+        print(f"   💡 Recomendación: {recommendation}")
 
 
 if __name__ == '__main__':

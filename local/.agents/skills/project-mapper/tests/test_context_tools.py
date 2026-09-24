@@ -50,10 +50,30 @@ def test_injector_and_compressor() -> None:
         assert {item["path"] for item in context["files"]} == {"src/auth.ts", "src/main.ts"}
         assert "functions" not in context["files"][0]
         assert context["estimated_tokens"] > 0
+        assert context["efficiency"]["status"] == "OK"
 
         compressed = compressor_module.ContextCompressor().compress_map(map_path, ratio=0.5)
         assert compressed["dependency_graph"]["src/main.ts"] == ["src/auth.ts"]
         assert compressed["metadata"]["compression"]["method"] == "deterministic"
+
+
+def test_efficiency_warns_for_weak_query_and_expansion() -> None:
+    injector_module = load_script("inject_relevant")
+    with tempfile.TemporaryDirectory() as directory:
+        map_path = Path(directory) / "map.json"
+        data = sample_map()
+        data["generated_at"] = "2020-01-01T00:00:00+00:00"
+        data["dependency_graph"]["src/auth.ts"] = ["src/main.ts"]
+        map_path.write_text(json.dumps(data), encoding="utf-8")
+
+        injector = injector_module.RelevantContextInjector(map_path)
+        context = injector.build_context(
+            "OAuth", dep_depth=2, max_expansion_ratio=1.0
+        )
+
+        assert context["efficiency"]["status"] == "WARN"
+        assert "consulta con poca información para ranking léxico" in context["efficiency"]["warnings"]
+        assert "mapa posiblemente obsoleto" in context["efficiency"]["warnings"]
 
 
 if __name__ == "__main__":

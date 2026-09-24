@@ -81,6 +81,13 @@ python3 .agents/skills/project-mapper/scripts/inject_relevant.py --map .agents/s
 ```
 (Puedes incluir flags como `--max-files 10` o `--dep-depth 2` si necesitas controlar la cantidad de dependencias a inyectar). Si la skill está instalada en `local/.agents`, sustituye `.agents` por `local/.agents`.
 
+El resultado incluye `efficiency.status` (`OK`, `WARN` o `BYPASS`) y métricas
+para detectar consultas débiles, mapas grandes, contexto por encima del
+presupuesto, mapas obsoletos y expansión excesiva de dependencias. Los límites
+se pueden ajustar con `--map-token-limit`, `--context-token-limit` y
+`--max-expansion-ratio`. `BYPASS` indica que no hubo coincidencias directas y
+conviene reformular la consulta o no usar el mapper.
+
 Opciones adicionales de `inject_relevant.py`:
 
 - `--light`: excluye funciones y clases del contexto.
