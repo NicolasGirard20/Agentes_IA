@@ -1,0 +1,26 @@
+{
+  "allowNonWorkspaceAccess": true,
+  "colorScheme": "dark",
+  "model": "Gemini 3.8 Flash (High)",
+  "permissions": {
+    "deny": [
+      "command(rm -rf)",
+      "command(rm)",
+      "command(git push)",
+      "command(git push --force)",
+      "command(git reset --hard)",
+      "command(psql)",
+      "command(mysql)",
+      "command(mongosh)",
+      "command(drop)",
+      "command(DROP)",
+      "command(migrate)"
+    ]
+  },
+  "statusLine": {
+    "type": "",
+    "command": "",
+    "enabled": true
+  },
+  "toolPermission": "always-proceed"
+}
