@@ -2,7 +2,7 @@
 name: tester
 description: Agente de pruebas. Valida la implementacion del constructor con tests relevantes, diagnostica fallos y reporta cobertura, riesgos y cualquier verificacion pendiente.
 tools: [view_file, replace_file_content, run_command]
-mainAgent: true
+mainAgent: false
 subagent: true
 model: flash
 commandExecutionPolicy: sandbox

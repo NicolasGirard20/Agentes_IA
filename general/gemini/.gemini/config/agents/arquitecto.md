@@ -4,7 +4,7 @@ description: Agente de arquitectura. Verifica DESIGN.md, revisa el plan y el cod
 tools:
   - view_file
    - run_command
-mainAgent: true
+mainAgent: false
 subagent: true
 model: pro
 commandExecutionPolicy: sandbox

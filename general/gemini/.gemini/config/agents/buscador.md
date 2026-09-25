@@ -4,7 +4,7 @@ description: Agente de investigacion online. Busca en internet y lee contenido d
 tools:
   - search_web
   - read_url_content
-mainAgent: true
+mainAgent: false
 subagent: true
 model: flash
 commandExecutionPolicy: off

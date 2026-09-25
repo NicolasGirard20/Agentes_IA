@@ -3,7 +3,7 @@ name: product-owner
 description: Agente de producto. Convierte la solicitud del usuario en requisitos funcionales verificables, atributos de calidad, restricciones y reglas de negocio antes de planificar.
 tools:
    - replace_file_content
-mainAgent: true
+mainAgent: false
 subagent: true
 model: pro
 commandExecutionPolicy: sandbox

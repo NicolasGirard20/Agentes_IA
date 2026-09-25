@@ -5,7 +5,7 @@ tools:
   - view_file
   - grep_search
   - run_command
-mainAgent: true
+mainAgent: false
 subagent: true
 model: pro
 commandExecutionPolicy: sandbox

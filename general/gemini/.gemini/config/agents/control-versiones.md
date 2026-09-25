@@ -4,7 +4,7 @@ description: Agente de control de versiones. Ejecuta y administra Git: estado, r
 tools:
   - view_file
   - run_command
-mainAgent: true
+mainAgent: false
 subagent: true
 model: flash
 commandExecutionPolicy: sandbox

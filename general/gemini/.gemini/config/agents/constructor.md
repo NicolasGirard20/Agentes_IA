@@ -5,7 +5,7 @@ tools:
   - view_file
   - replace_file_content
   - run_command
-mainAgent: true
+mainAgent: false
 subagent: true
 model: flash
 commandExecutionPolicy: sandbox
