@@ -1,6 +1,9 @@
 {
   "project": "{{PROJECT_NAME}}",
   "agent": {
+    "type": "local",
+    "path": ".opencode/agent",
+    "default_agent": "orquestador",
     "on_session_start": ".agents/init.py",
     "rules_source": ".agents/rules/DESIGN.md",
     "coding_rules": ".agents/rules/coding-rules.json"
