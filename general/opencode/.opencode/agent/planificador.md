@@ -1,7 +1,7 @@
 ---
 description: Agente de analisis profundo. Usa siempre project-mapper, lee el codigo, ejecuta scripts de diagnostico y produce un plan detallado. NO modifica archivos de codigo - delega la implementacion al agente constructor.
 mode: subagent
-model: openrouter/moonshotai/kimi-k2.6
+model: openrouter/openai/gpt-6-luna
 permission:
    read: allow
    grep: allow

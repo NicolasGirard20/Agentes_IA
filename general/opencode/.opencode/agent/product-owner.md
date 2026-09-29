@@ -1,7 +1,7 @@
 ---
 description: Agente de producto. Convierte la solicitud del usuario en requisitos funcionales verificables, atributos de calidad, restricciones y reglas de negocio antes de planificar.
 mode: subagent
-model: openrouter/moonshotai/kimi-k2.6
+model: openrouter/openai/gpt-6-luna
 permission:
    edit: allow
    read: deny
