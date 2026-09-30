@@ -2,6 +2,7 @@
 
 Este repositorio contiene la **configuración de agentes y skills** utilizada para potenciar el flujo de trabajo con IA en proyectos de software.
 
+## Tener encuenta realizar pasos de instalación de plugins de opencode
 
 ### Skills disponibles
 
