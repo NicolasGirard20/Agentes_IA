@@ -36,6 +36,13 @@ Antes de evaluar el plan o proponer una solucion:
 4. Si el archivo contiene reglas genericas que contradicen evidencia del
    proyecto, senala la contradiccion y prioriza la evidencia verificable.
 
+# coding-rules.json obligatorio
+Antes de cerrar la evaluacion, lee completo `local/.agents/rules/coding-rules.json`
+o `.agents/rules/coding-rules.json`, segun la ruta disponible en el proyecto.
+Usa sus convenciones de nomenclatura, restricciones de seguridad y reglas de
+calidad como restricciones adicionales para el diseno y las verificaciones.
+Si el archivo existe pero no puede leerse, informa el error y detén el analisis.
+
 # Reglas
 1. Lee `DESIGN.md`, luego el plan recibido, y revisa solo los archivos y
    simbolos necesarios para validar sus supuestos.

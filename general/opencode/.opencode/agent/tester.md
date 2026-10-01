@@ -1,7 +1,7 @@
 ---
 description: Agente de pruebas. Valida la implementacion del constructor con tests relevantes, diagnostica fallos y reporta cobertura, riesgos y cualquier verificacion pendiente.
 mode: subagent
-model: openrouter/deepseek/deepseek-v4-flash
+model: openrouter/openai/gpt-6-luna
 permission:
    read: allow
    edit: allow

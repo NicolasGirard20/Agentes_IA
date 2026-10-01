@@ -1,7 +1,7 @@
 ---
 description: Agente de arquitectura. Verifica DESIGN.md, revisa el plan y el codigo existente para definir una solucion tecnica coherente, sus limites, riesgos y decisiones de diseno antes de implementar.
 mode: subagent
-model: openrouter/moonshotai/kimi-k2.6
+model: openrouter/openai/gpt-6-luna-pro
 permission:
    read: allow
    bash: allow
