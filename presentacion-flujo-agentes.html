@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<meta charset="utf-8">
+<title>Flujo actual de agentes</title>
+<style>
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:400;src:local('Space Grotesk');}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;src:local('IBM Plex Mono');}
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+--bg:#0d1119;--bg2:#151b26;--ink:#e4e9f0;--muted:#8b98b0;--line:#475569;
+--agent:#5195ff;--decide:#e8943a;
+--w:1920px;--h:1080px;
+}
+*,::before,::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:"Space Grotesk","IBM Plex Mono",monospace}
+#vp{position:fixed;inset:0;overflow:hidden}
+#stg{width:var(--w);height:var(--h);position:fixed;background:var(--bg);overflow:hidden}
+#stg::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:1}
+#prg{position:absolute;top:0;left:0;height:3px;background:var(--agent);width:0;transition:width .35s;z-index:20}
+.slide{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity .4s,visibility .4s;z-index:10}
+.slide.active{opacity:1;visibility:visible}
+.sh{position:absolute;left:112px;top:60px;right:112px;display:flex;justify-content:space-between}
+.sh>.lft{display:flex;flex-direction:column;gap:4px}
+.sh>.rgt{font:500 22px/1 "IBM Plex Mono";color:var(--muted);opacity:.6}
+.k{font:500 24px/1.3 "IBM Plex Mono";color:var(--decide);letter-spacing:.16em;text-transform:uppercase}
+.sh h2{font:600 54px/1.1 "Space Grotesk";color:var(--ink);letter-spacing:-.01em;margin:0}
+.diag{position:absolute;left:112px;top:225px;width:1696px;height:740px;pointer-events:none}
+.diag svg{position:absolute;inset:0;overflow:visible}
+.notes{position:absolute;left:112px;bottom:56px;max-width:1100px;display:flex;flex-wrap:wrap;gap:24px}
+.notes>.n{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
+.notes>.n::before{content:"\25b8 ";color:var(--decide);font:500 22px "IBM Plex Mono"}
+.notes span{font:400 24px/1.3 "Space Grotesk";color:var(--muted)}
+.nav{position:absolute;bottom:40px;right:120px;display:flex;align-items:center;gap:12px;z-index:30}
+.nav button{background:none;border:1px solid var(--muted);border-radius:6px;color:var(--muted);font:500 28px "Space Grotesk";cursor:pointer;padding:4px 14px 2px;transition:border-color .2s,color .2s}
+.nav button:hover{border-color:var(--agent);color:var(--agent)}
+.nav button.prim{background:var(--agent);color:var(--bg);border-color:var(--agent)}
+.nav button.prim:hover{background:color-mix(in oklab,var(--agent) 75%,var(--bg));color:var(--ink)}
+#cntr{font:500 22px "IBM Plex Mono";color:var(--muted)}
+.dots{position:absolute;top:44px;right:120px;display:flex;gap:8px;z-index:30}
+.dots button{width:10px;height:10px;border-radius:50%;border:1px solid var(--muted);background:transparent;cursor:pointer;padding:0;transition:background .2s,border-color .2s}
+.dots button.act{background:var(--agent);border-color:var(--agent)}
+.dots button:not(.act):hover{background:var(--muted)}
+/* nodes */
+.n{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:3px;padding:10px 14px;transition:filter .3s,opacity .3s,border-color .3s,background .3s}
+.n.ag{border:1.6px solid var(--agent);background:color-mix(in oklab,var(--agent) 9%,var(--bg2));border-radius:8px}
+.n.ag .t{font:600 26px/1.1 "Space Grotesk";color:var(--ink)}
+.n.ag .c{font:400 23px/1.2 "IBM Plex Mono";color:var(--muted)}
+.n.dc{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--decide);border:none;padding:0}
+.n.dc .di{position:absolute;inset:2px;clip-path:inherit;background:color-mix(in oklab,var(--decide) 12%,var(--bg2));display:flex;align-items:center;justify-content:center;text-align:center;padding:0 32px}
+.n.dc .dt{font:600 26px/1.1 "Space Grotesk";color:var(--ink)}
+.n.tm{border:1.6px solid var(--muted);border-radius:999px;background:var(--bg2)}
+.n.tm .tt{font:500 24px/1.1 "IBM Plex Mono";color:var(--ink)}
+.n.doc{border:1.6px dashed var(--muted);background:var(--bg2);border-radius:6px}
+.n.doc .t{font:500 24px/1.1 "Space Grotesk";color:var(--muted)}
+.n.ch{border:1.6px dashed var(--line);background:transparent;border-radius:6px;padding:4px 14px}
+.n.ch .t{font:500 22px/1 "IBM Plex Mono";color:var(--muted)}
+.n .t.sz{font-size:24px}
+.n .c.sz{font-size:20px}
+.n.lit{filter:drop-shadow(0 0 0 2px var(--agent)) drop-shadow(0 0 18px color-mix(in srgb,var(--agent) 40%,transparent));border-color:var(--agent)!important}
+.n.dc.lit{background:color-mix(in oklab,var(--decide) 50%,var(--agent))}
+.n.dc.lit .di{background:color-mix(in oklab,var(--decide) 20%,var(--bg));clip-path:inherit}
+.n.don{opacity:.38}
+.edge{stroke:var(--line);stroke-width:1.8;fill:none;stroke-linejoin:round;stroke-linecap:round;marker-end:url(#arr)}
+.edge.lit{stroke:var(--agent);marker-end:url(#ar2)}
+.edge.dsh{stroke-dasharray:6 6}
+.e{position:absolute;transform:translate(-50%,-50%);font:500 23px/1 "IBM Plex Mono";color:var(--muted);background:color-mix(in oklab,var(--bg) 80%,transparent);padding:1px 8px;white-space:nowrap;pointer-events:none;border-radius:3px}
+.e.acc{color:var(--decide)}
+/* portada */
+.ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px;padding:40px}
+.ctr h1{font:700 112px/1 "Space Grotesk";color:var(--ink);letter-spacing:-.02em}
+.ctr .sub{font:400 28px/1.35 "Space Grotesk";color:var(--muted);max-width:900px}
+.ctr .meta{font:400 24px/1 "IBM Plex Mono";color:var(--muted)}
+.ctr .hint{font:400 24px/1 "IBM Plex Mono";color:var(--agent)}
+/* s11 rules */
+.rls{position:absolute;left:112px;top:560px;right:112px;display:grid;grid-template-columns:1fr 1fr;gap:16px 40px}
+.rule{display:flex;gap:3px;align-items:baseline}
+.rule b{font:500 22px/1 "IBM Plex Mono";color:var(--decide)}
+.rule span{font:400 24px/1.3 "Space Grotesk";color:var(--muted)}
+.rule .hl{color:var(--agent)}
+</style>
+</head><body>
+<div id="vp"><div id="stg">
+<div id="prg"></div>
+
+<!-- defs -->
+<svg width="0" height="0" style="position:absolute"><defs>
+<marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker>
+<marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#5195ff"/></marker>
+</defs></svg>
+
+<!-- S1 PORTADA -->
+<section class="slide active" id="s1">
+<div class="ctr">
+<p class="k" style="font-size:24px;text-transform:none">AGENTES_IA · .gemini/config/agents</p>
+<h1>Flujo actual&nbsp;de agentes</h1>
+<p class="sub">Un recorrido visual por la coordinaci&#243;n del orquestador y sus siete subagentes: de la solicitud del usuario al resultado verificado.</p>
+<p class="meta">Fuente: .gemini/config/agents/*.md &middot; 9 definiciones de agente</p>
+<p class="hint">&larr; &rarr; navegar &middot; <span style="color:var(--decide)">R</span> repite la animaci&#243;n</p>
+</div>
+</section>
+
+<!-- S2 ELENCO -->
+<section class="slide" id="s2" data-steps='["s2-orq","s2-po","s2-plan","s2-arch","s2-web","s2-build","s2-test","s2-git","s2-def"]'>
+<header class="sh"><div class="lft"><p class="k">01 &middot; El elenco</p><h2>Un orquestador, siete subagentes y un default</h2></div></header>
+<div class="diag" id="d2">
+<svg viewBox="0 0 1696 740"><defs><marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
+<line x1="840" y1="360" x2="300" y2="95" class="edge" marker-end="url(#a2)"/>
+<line x1="840" y1="360" x2="840" y2="88" class="edge" marker-end="url(#a2)"/>
+<line x1="840" y1="360" x2="1380" y2="95" class="edge" marker-end="url(#a2)"/>
+<line x1="840" y1="360" x2="1505" y2="360" class="edge" marker-end="url(#a2)"/>
+<line x1="840" y1="360" x2="1380" y2="612" class="edge" marker-end="url(#a2)"/>
+<line x1="840" y1="360" x2="840" y2="620" class="edge" marker-end="url(#a2)"/>
+<line x1="840" y1="360" x2="300" y2="612" class="edge" marker-end="url(#a2)"/>
+<line x1="840" y1="360" x2="175" y2="360" class="edge" marker-end="url(#a2)"/>
+</svg>
+<div class="n ag" id="s2-orq" style="left:840px;top:360px;width:320px;min-height:120px"><span class="t">orquestador</span><span class="c">coordina &middot; no ejecuta comandos</span></div>
+<div class="n ag" id="s2-po" style="left:300px;top:95px;width:270px;min-height:112px"><span class="t">product-owner</span><span class="c">define alcance y requisitos</span></div>
+<div class="n ag" id="s2-plan" style="left:840px;top:88px;width:270px;min-height:112px"><span class="t">planificador</span><span class="c">project-mapper &rarr; plan</span></div>
+<div class="n ag" id="s2-arch" style="left:1380px;top:95px;width:270px;min-height:112px"><span class="t">arquitecto</span><span class="c">valida dise&ntilde;o y riesgos</span></div>
+<div class="n ag" id="s2-web" style="left:1505px;top:360px;width:270px;min-height:112px"><span class="t">buscador</span><span class="c">investiga fuentes externas</span></div>
+<div class="n ag" id="s2-build" style="left:1380px;top:612px;width:270px;min-height:112px"><span class="t">constructor</span><span class="c">implementa y verifica</span></div>
+<div class="n ag" id="s2-test" style="left:840px;top:620px;width:270px;min-height:112px"><span class="t">tester</span><span class="c">prueba e informa riesgos</span></div>
+<div class="n ag" id="s2-git" style="left:300px;top:612px;width:270px;min-height:112px"><span class="t">control-versiones</span><span class="c">ejecuta Git con confirmaci&oacute;n</span></div>
+<div class="n ag" id="s2-def" style="left:175px;top:360px;width:270px;min-height:112px"><span class="t">default</span><span class="c">tareas generales &middot; Git solo lectura</span></div>
+</div>
+<div class="notes" style="bottom:60px"><div class="n"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--agent);vertical-align:middle"></span> agente</span></div><div class="n"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid var(--decide);vertical-align:middle"></span> decisi&oacute;n</span></div><div class="n"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:20px;height:14px;border-radius:99px;border:1.5px solid var(--muted);background:var(--bg2);vertical-align:middle"></span> usuario / resultado</span></div></div>
+</section>
+
+<!-- S3 ENTRADA -->
+<section class="slide" id="s3" data-steps='["s3-in","s3-e1","s3-route","s3-e2","s3-po","s3-e3","s3-def"]'>
+<header class="sh"><div class="lft"><p class="k">02 &middot; Punto de entrada</p><h2>Toda solicitud elige una ruta</h2></div></header>
+<div class="diag" id="d3">
+<svg viewBox="0 0 1696 740"><defs><marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
+<line id="s3-e1" x1="340" y1="350" x2="485" y2="350" class="edge" marker-end="url(#a3)"/>
+<polyline id="s3-e2" points="755,330 860,330 860,195 945,195" class="edge" marker-end="url(#a3)"/>
+<polyline id="s3-e3" points="755,370 860,370 860,510 945,510" class="edge" marker-end="url(#a3)"/>
+<line x1="1255" y1="195" x2="1390" y2="195" class="edge dsh" marker-end="url(#a3)"/>
+<line x1="1255" y1="515" x2="1390" y2="515" class="edge dsh" marker-end="url(#a3)"/>
+</svg>
+<div class="n tm" id="s3-in" style="left:200px;top:350px;width:280px;min-height:84px"><span class="tt">Solicitud del usuario</span></div>
+<div class="n dc" id="s3-route" style="left:620px;top:350px;width:270px;height:160px"><div class="di"><span class="dt">Ruta de trabajo</span></div></div>
+<div class="n ag" id="s3-po" style="left:1100px;top:195px;width:310px;min-height:112px"><span class="t">product-owner</span><span class="c">define alcance y requisitos</span></div>
+<div class="n ag" id="s3-def" style="left:1100px;top:515px;width:310px;min-height:112px"><span class="t">default</span><span class="c">analiza, busca, implementa o delega</span></div>
+<div class="e" id="s3-l1" style="left:800px;top:293px">Flujo especializado</div>
+<div class="e" style="left:800px;top:393px">Tarea general</div>
+<div class="n ch" style="left:1480px;top:195px;width:200px"><span class="t">fases 1 a 6 &rarr;</span></div>
+<div class="n ch" style="left:1480px;top:515px;width:200px"><span class="t">ruta general &rarr;</span></div>
+</div>
+<div class="notes"><div class="n"><span>Dos rutas: especializada (con requisitos) y general (tarea directa)</span></div><div class="n"><span>El orquestador coordina; no ejecuta comandos</span></div></div>
+</section>
+
+<!-- S4 REQUISITOS -->
+<section class="slide" id="s4" data-steps='["s4-po","s4-e1","s4-st","s4-e2","s4-ask","s4-e3","s4-an","s4-eb","s4-st","s4-e4","s4-pdr","s4-e5","s4-pp","s4-e6","s4-pl"]'>
+<header class="sh"><div class="lft"><p class="k">03 &middot; Fase 1 &middot; Requisitos</p><h2>product-owner: del pedido vago al requisito claro</h2></div></header>
+<div class="diag" id="d4">
+<svg viewBox="0 0 1696 740"><defs><marker id="a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
+<line id="s4-e1" x1="390" y1="150" x2="475" y2="150" class="edge" marker-end="url(#a4)"/>
+<line id="s4-e2" x1="745" y1="150" x2="825" y2="100" class="edge" marker-end="url(#a4)"/>
+<line id="s4-e3" x1="1145" y1="85" x2="1230" y2="85" class="edge" marker-end="url(#a4)"/>
+<polyline id="s4-eb" points="1370,43 1370,15 250,15 250,94" class="edge" marker-end="url(#a4)"/>
+<line id="s4-e4" x1="610" y1="225" x2="610" y2="355" class="edge" marker-end="url(#a4)"/>
+<line id="s4-e5" x1="735" y1="420" x2="845" y2="420" class="edge" marker-end="url(#a4)"/>
+<polyline id="s4-e6" points="735,485 735,590 1320,590 1320,475" class="edge" marker-end="url(#a4)"/>
+<line x1="1130" y1="420" x2="1240" y2="420" class="edge" marker-end="url(#a4)"/>
+</svg>
+<div class="n ag" id="s4-po" style="left:250px;top:150px;width:280px;min-height:112px"><span class="t">product-owner</span><span class="c">define alcance y requisitos</span></div>
+<div class="n dc" id="s4-st" style="left:610px;top:150px;width:270px;height:150px"><div class="di"><span class="dt">&iquest;Estado de requisitos?</span></div></div>
+<div class="n ag" id="s4-ask" style="left:990px;top:85px;width:310px;min-height:100px"><span class="t">orquestador</span><span class="c">muestra preguntas al usuario</span></div>
+<div class="n tm" id="s4-an" style="left:1370px;top:85px;width:280px;min-height:86px"><span class="tt">Respuesta del usuario</span></div>
+<div class="n dc" id="s4-pdr" style="left:610px;top:420px;width:250px;height:130px"><div class="di"><span class="dt">&iquest;Persistir PDR?</span></div></div>
+<div class="n ag" id="s4-pp" style="left:990px;top:420px;width:280px;min-height:112px"><span class="t">product-owner</span><span class="c">actualiza PRODUCT_REQUIREMENTS.md</span></div>
+<div class="n ag" id="s4-pl" style="left:1380px;top:420px;width:280px;min-height:112px"><span class="t">planificador</span><span class="c">ejecuta project-mapper y analiza</span></div>
+<div class="e" style="left:780px;top:178px">NEEDS_CLARIFICATION</div>
+<div class="e" style="left:670px;top:290px">READY</div>
+<div class="e" style="left:870px;top:396px">S&iacute;, con aprobaci&oacute;n</div>
+<div class="e" style="left:1120px;top:572px">No</div>
+<div class="e" style="left:480px;top:48px">se reintenta con la respuesta</div>
+</div>
+<div class="notes"><div class="n"><span>product-owner siempre precede a planificador</span></div><div class="n"><span>El PDR solo se persiste con aprobaci&oacute;n del usuario</span></div></div>
+</section>
+
+<!-- S5 PLANIFICACI= -->
+<section class="slide" id="s5" data-steps='["s5-pl","s5-e1","s5-ou","s5-e2","s5-ap","s5-en","s5-pl","s5-e2","s5-ap","s5-es","s5-ar"]'>
+<header class="sh"><div class="lft"><p class="k">04 &middot; Fase 2 &middot; Planificaci&oacute;n</p><h2>planificador: diagn&oacute;stico antes que c&oacute;digo</h2></div></header>
+<div class="diag" id="d5">
+<svg viewBox="0 0 1696 740"><defs><marker id="a5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
+<line id="s5-e1" x1="410" y1="380" x2="475" y2="380" class="edge" marker-end="url(#a5)"/>
+<line id="s5-e2" x1="805" y1="380" x2="865" y2="380" class="edge" marker-end="url(#a5)"/>
+<line id="s5-es" x1="1155" y1="380" x2="1310" y2="380" class="edge" marker-end="url(#a5)"/>
+<polyline id="s5-en" points="1010,300 1010,180 260,180 260,322" class="edge" marker-end="url(#a5)"/>
+</svg>
+<div class="n ag" id="s5-pl" style="left:260px;top:380px;width:300px;min-height:116px"><span class="t">planificador</span><span class="c">ejecuta project-mapper y analiza</span></div>
+<div class="n doc" id="s5-ou" style="left:640px;top:380px;width:330px;min-height:100px"><span class="t">Diagn&oacute;stico + plan + contexto</span></div>
+<div class="n dc" id="s5-ap" style="left:1010px;top:380px;width:290px;height:160px"><div class="di"><span class="dt">&iquest;El usuario aprueba el plan?</span></div></div>
+<div class="n dc" id="s5-ar" style="left:1450px;top:380px;width:280px;height:150px"><div class="di"><span class="dt">Decisi&oacute;n arquitect&oacute;nica</span></div></div>
+<div class="e acc" style="left:1232px;top:352px">S&iacute;</div>
+<div class="e" style="left:635px;top:155px">No: pide cambios</div>
+</div>
+<div class="notes"><div class="n"><span>project-mapper es obligatorio antes del an&aacute;lisis</span></div><div class="n"><span>Sin aprobaci&oacute;n no se avanza a arquitectura, b&uacute;squeda ni construcci&oacute;n</span></div></div>
+</section>
+
+<!-- S6 ARQUITECTURA -->
+<section class="slide" id="s6" data-steps='["s6-dc","s6-en","s6-ar","s6-enx","s6-nx"]'>
+<header class="sh"><div class="lft"><p class="k">05 &middot; Fase 3 &middot; Arquitectura <span style="color:var(--muted);font-size:22px">(condicional)</span></p><h2>arquitecto: solo cuando hace falta</h2></div></header>
+<div class="diag" id="d6">
+<svg viewBox="0 0 1696 740"><defs><marker id="a6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
+<line id="s6-en" x1="485" y1="350" x2="645" y2="180" class="edge" marker-end="url(#a6)"/>
+<polyline id="s6-enx" points="955,180 1100,180 1100,350 1190,350" class="edge" marker-end="url(#a6)"/>
+<polyline points="330,430 330,560 1360,560 1360,402" class="edge" marker-end="url(#a6)"/>
+</svg>
+<div class="n dc" id="s6-dc" style="left:330px;top:350px;width:310px;height:160px"><div class="di"><span class="dt">Decisi&oacute;n arquitect&oacute;nica</span></div></div>
+<div class="n ag" id="s6-ar" style="left:800px;top:180px;width:310px;min-height:112px"><span class="t">arquitecto</span><span class="c">valida dise&ntilde;o y riesgos</span></div>
+<div class="n doc" id="s6-nx" style="left:1360px;top:350px;width:340px;min-height:104px"><span class="t">Siguiente: &iquest;hace falta investigaci&oacute;n externa?</span></div>
+<div class="e" style="left:520px;top:240px">ARQUITECTO: NECESARIO</div>
+<div class="e" style="left:845px;top:532px">ARQUITECTO: NO_NECESARIO</div>
+</div>
+<div class="notes"><div class="n"><span>Solo participa si el planificador marca ARQUITECTO: NECESARIO</span></div></div>
+</section>
+
+<!-- S7 BUSCADOR -->
+<section class="slide" id="s7" data-steps='["s7-dc","s7-es","s7-we","s7-ew","s7-bu"]'>
+<header class="sh"><div class="lft"><p class="k">06 &middot; Fase 4 &middot; Investigaci&oacute;n <span style="color:var(--muted);font-size:22px">(condicional)</span></p><h2>buscador: evidencia externa antes de implementar</h2></div></header>
+<div class="diag" id="d7">
+<svg viewBox="0 0 1696 740"><defs><marker id="a7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
+<line id="s7-es" x1="495" y1="350" x2="645" y2="180" class="edge" marker-end="url(#a7)"/>
+<polyline id="s7-ew" points="955,180 1100,180 1100,350 1195,350" class="edge" marker-end="url(#a7)"/>
+<polyline points="330,435 330,560 1360,560 1360,410" class="edge" marker-end="url(#a7)"/>
+</svg>
+<div class="n dc" id="s7-dc" style="left:330px;top:350px;width:330px;height:170px"><div class="di"><span class="dt">&iquest;Hace falta investigaci&oacute;n externa?</span></div></div>
+<div class="n ag" id="s7-we" style="left:800px;top:180px;width:310px;min-height:112px"><span class="t">buscador</span><span class="c">investiga fuentes externas</span></div>
+<div class="n ag" id="s7-bu" style="left:1360px;top:350px;width:330px;min-height:120px"><span class="t">constructor</span><span class="c">implementa y ejecuta verificaciones</span></div>
+<div class="e" style="left:520px;top:240px">S&iacute;: fuentes externas necesarias</div>
+<div class="e" style="left:380px;top:535px">No</div>
+</div>
+<div class="notes"><div class="n"><span>Solo si se necesita API, librer&iacute;a, best practices o trade-off actual</span></div></div>
+</section>
+
+<!-- S8 CONSTRUCCION PRUEBAS -->
+<section class="slide" id="s8" data-steps='["s8-bu","s8-e1","s8-te","s8-e2","s8-st","s8-fa","s8-fx","s8-eb","s8-te","s8-st","s8-ek","s8-gd"]'>
+<header class="sh"><div class="lft"><p class="k">07 &middot; Fase 5 &middot; Construcci&oacute;n y pruebas</p><h2>constructor &#8660; tester: el loop de calidad</h2></div></header>
+<div class="diag" id="d8">
+<svg viewBox="0 0 1696 740"><defs><marker id="a8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
+<line id="s8-e1" x1="410" y1="330" x2="510" y2="330" class="edge" marker-end="url(#a8)"/>
+<line id="s8-e2" x1="810" y1="330" x2="905" y2="330" class="edge" marker-end="url(#a8)"/>
+<line id="s8-ek" x1="1195" y1="330" x2="1345" y2="330" class="edge" marker-end="url(#a8)"/>
+<line id="s8-fa" x1="1050" y1="410" x2="1050" y2="545" class="edge" marker-end="url(#a8)"/>
+<polyline id="s8-eb" points="900,600 660,600 660,388" class="edge" marker-end="url(#a8)"/>
+</svg>
+<div class="n ag" id="s8-bu" style="left:260px;top:330px;width:300px;min-height:116px"><span class="t">constructor</span><span class="c">implementa y verifica</span></div>
+<div class="n ag" id="s8-te" style="left:660px;top:330px;width:300px;min-height:116px"><span class="t">tester</span><span class="c">prueba e informa riesgos</span></div>
+<div class="n dc" id="s8-st" style="left:1050px;top:330px;width:290px;height:160px"><div class="di"><span class="dt">&iquest;Resultado del tester?</span></div></div>
+<div class="n ag" id="s8-fx" style="left:1050px;top:600px;width:300px;min-height:110px"><span class="t">constructor</span><span class="c">corrige la implementaci&oacute;n</span></div>
+<div class="n dc" id="s8-gd" style="left:1480px;top:330px;width:280px;height:150px"><div class="di"><span class="dt">&iquest;Se solicit&oacute; acci&oacute;n Git?</span></div></div>
+<div class="e" style="left:1268px;top:240px">APROBADO o APROBADO CON RIESGOS</div>
+<div class="e acc" style="left:1120px;top:475px">FALLA</div>
+<div class="e" style="left:780px;top:575px">vuelve a probar</div>
+</div>
+<div class="notes"><div class="n"><span>tester siempre ocurre despu&eacute;s de constructor</span></div><div class="n"><span>constructor no gestiona Git</span></div></div>
+</section>
+
+<!-- S9 GIT -->
+<section class="slide" id="s9" data-steps='["s9-gd","s9-e1","s9-gt","s9-e2","s9-rk","s9-si","s9-cf","s9-ok","s9-ex","s9-ev","s9-vr","s9-es","s9-sy"]'>
+<header class="sh"><div class="lft"><p class="k">08 &middot; Fase 6 &middot; Git</p><h2>control-versiones: la &uacute;nica mano en el repositorio</h2></div></header>
+<div class="diag" id="d9">
+<svg viewBox="0 0 1696 740"><defs><marker id="a9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
+<line id="s9-e1" x1="300" y1="360" x2="360" y2="360" class="edge" marker-end="url(#a9)"/>
+<line id="s9-e2" x1="640" y1="360" x2="670" y2="360" class="edge" marker-end="url(#a9)"/>
+<polyline id="s9-si" points="800,285 800,150 980,150" class="edge" marker-end="url(#a9)"/>
+<line id="s9-ok" x1="1130" y1="205" x2="1130" y2="490" class="edge" marker-end="url(#a9)"/>
+<polyline points="800,435 800,540 985,540" class="edge" marker-end="url(#a9)"/>
+<line id="s9-ev" x1="1270" y1="540" x2="1350" y2="540" class="edge" marker-end="url(#a9)"/>
+<line id="s9-es" x1="1470" y1="490" x2="1470" y2="405" class="edge" marker-end="url(#a9)"/>
+<line x1="1470" y1="200" x2="1470" y2="310" class="edge" marker-end="url(#a9)"/>
+<polyline points="170,435 170,655 1470,655 1470,405" class="edge" marker-end="url(#a9)"/>
+<line x1="1290" y1="150" x2="1345" y2="150" class="edge" marker-end="url(#a9)"/>
+</svg>
+<div class="n dc" id="s9-gd" style="left:170px;top:360px;width:260px;height:150px"><div class="di"><span class="dt">&iquest;Se solicit&oacute; acci&oacute;n Git?</span></div></div>
+<div class="n ag" id="s9-gt" style="left:500px;top:360px;width:280px;min-height:112px"><span class="t">control-versiones</span><span class="c">inspecciona y ejecuta Git</span></div>
+<div class="n dc" id="s9-rk" style="left:800px;top:360px;width:260px;height:150px"><div class="di"><span class="dt">&iquest;Comando Git riesgoso?</span></div></div>
+<div class="n ag" id="s9-cf" style="left:1130px;top:150px;width:320px;min-height:112px"><span class="t">consulta al usuario</span><span class="c">comando y efecto esperado</span></div>
+<div class="n ag" id="s9-ex" style="left:1130px;top:540px;width:280px;min-height:100px"><span class="t">ejecuta comando</span></div>
+<div class="n tm" id="s9-vr" style="left:1470px;top:540px;width:260px;min-height:100px"><span class="tt">verifica con Git de lectura</span></div>
+<div class="n tm" id="s9-sy" style="left:1470px;top:355px;width:260px;min-height:100px"><span class="tt">sintetiza resultado</span></div>
+<div class="n tm" style="left:1470px;top:170px;width:200px;min-height:80px"><span class="tt">detiene operaci&oacute;n</span></div>
+<div class="e acc" style="left:845px;top:225px">S&iacute;</div>
+<div class="e" style="left:1200px;top:348px">Confirma</div>
+<div class="e" style="left:1318px;top:122px">No confirma</div>
+<div class="e" style="left:845px;top:495px">No</div>
+<div class="e" style="left:820px;top:632px">No: se sintetiza sin tocar Git</div>
+</div>
+<div class="notes"><div class="n"><span>control-versiones es el &uacute;nico agente que ejecuta Git</span></div><div class="n"><span>Riesgoso = &iacute;ndice, historial, ramas, archivos o remotos</span></div><div class="n"><span>Siempre verifica con Git de lectura tras ejecutar</span></div></div>
+</section>
+
+<!-- S10 RUTA GENERAL -->
+<section class="slide" id="s10" data-steps='["s10-df","s10-e1","s10-dg","s10-er","s10-dr","s10-ew","s10-dw","s10-eo","s10-ou"]'>
+<header class="sh"><div class="lft"><p class="k">09 &middot; Ruta general</p><h2>default: la v&iacute;a r&aacute;pida, con l&iacute;mites en Git</h2></div></header>
+<div class="diag" id="d10">
+<svg viewBox="0 0 1696 740"><defs><marker id="a10" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
+<line id="s10-e1" x1="310" y1="350" x2="360" y2="350" class="edge" marker-end="url(#a10)"/>
+<line id="s10-eo" x1="1370" y1="350" x2="1430" y2="350" class="edge" marker-end="url(#a10)"/>
+<line x1="620" y1="350" x2="1090" y2="350" class="edge" marker-end="url(#a10)"/>
+<polyline id="s10-er" points="490,275 490,150 710,150" class="edge" marker-end="url(#a10)"/>
+<polyline id="s10-ew" points="1010,150 1230,150 1230,294" class="edge" marker-end="url(#a10)"/>
+<polyline id="s10-eu" points="490,425 490,550 710,550" class="edge" marker-end="url(#a10)"/>
+<line x1="1010" y1="550" x2="1230" y2="550" class="edge dsh" marker-end="url(#a10)"/>
+</svg>
+<div class="n ag" id="s10-df" style="left:170px;top:350px;width:280px;min-height:112px"><span class="t">default</span><span class="c">analiza, busca, implementa o delega</span></div>
+<div class="n dc" id="s10-dg" style="left:490px;top:350px;width:260px;height:150px"><div class="di"><span class="dt">&iquest;Necesita Git?</span></div></div>
+<div class="n ag" id="s10-dr" style="left:860px;top:150px;width:300px;min-height:100px"><span class="t">ejecuta Git de lectura</span></div>
+<div class="n ag" id="s10-dw" style="left:1230px;top:350px;width:280px;min-height:112px"><span class="t">resuelve la tarea general</span></div>
+<div class="n tm" id="s10-ou" style="left:1520px;top:350px;width:200px;min-height:84px"><span class="tt">Resultado</span></div>
+<div class="n ag" style="left:860px;top:550px;width:300px;min-height:100px"><span class="t">informa al orquestador</span></div>
+<div class="n ch" style="left:1380px;top:550px;width:280px"><span class="t">control-versiones ejecuta (fase 6)</span></div>
+<div class="e" style="left:385px;top:205px">Solo lectura</div>
+<div class="e" style="left:610px;top:472px">Escritura, remoto o historial</div>
+<div class="e" style="left:850px;top:325px">No</div>
+</div>
+<div class="notes"><div class="n"><span>Excepci&oacute;n actual: default permite Git de lectura y bloquea escritura</span></div><div class="n"><span>Pol&iacute;tica vigente, no una pol&iacute;tica futura</span></div></div>
+</section>
+
+<!-- S11 PANORAMA -->
+<section class="slide" id="s11">
+<header class="sh"><div class="lft"><p class="k">10 &middot; Panorama</p><h2>El flujo completo, en una l&iacute;nea</h2></div></header>
+<div class="diag" id="d11" style="height:250px">
+<svg viewBox="0 0 1696 250"><defs><marker id="a11" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
+<line x1="140" y1="120" x2="165" y2="120" class="edge" marker-end="url(#a11)"/>
+<line x1="335" y1="120" x2="355" y2="120" class="edge" marker-end="url(#a11)"/>
+<line x1="510" y1="120" x2="525" y2="120" class="edge" marker-end="url(#a11)"/>
+<line x1="685" y1="120" x2="700" y2="120" class="edge" marker-end="url(#a11)"/>
+<line x1="882" y1="120" x2="900" y2="120" class="edge" marker-end="url(#a11)"/>
+<line x1="1060" y1="120" x2="1075" y2="120" class="edge" marker-end="url(#a11)"/>
+<line x1="1240" y1="120" x2="1255" y2="120" class="edge" marker-end="url(#a11)"/>
+<line x1="1435" y1="120" x2="1445" y2="120" class="edge" marker-end="url(#a11)"/>
+</svg>
+<div class="n tm" style="left:80px;top:120px;width:120px;min-height:72px"><span class="tt" style="font-size:22px">solicitud</span></div>
+<div class="n dc" style="left:250px;top:120px;width:170px;height:95px"><div class="di"><span class="dt" style="font-size:23px">ruta</span></div></div>
+<div class="n ag" style="left:440px;top:120px;width:140px;min-height:72px"><span class="t sz">product-owner</span></div>
+<div class="n ag" style="left:605px;top:120px;width:160px;min-height:72px"><span class="t sz">planificador</span></div>
+<div class="n dc" style="left:790px;top:120px;width:185px;height:95px"><div class="di"><span class="dt" style="font-size:23px">&iquest;aprueba?</span></div></div>
+<div class="n ag" style="left:1035px;top:120px;width:220px;min-height:72px"><span class="t sz">arquitecto + buscador</span><span class="c sz">condicionales</span></div>
+<div class="n ag" style="left:1295px;top:120px;width:260px;min-height:72px"><span class="t sz">constructor &#8660; tester</span></div>
+<div class="n dc" style="left:1500px;top:120px;width:140px;height:95px"><div class="di"><span class="dt" style="font-size:23px">&iquest;Git?</span></div></div>
+<div class="n tm" style="left:1630px;top:120px;width:100px;min-height:72px"><span class="tt" style="font-size:22px">resultado</span></div>
+</div>
+<div class="rls">
+<div class="rule"><b>01</b><span>El orquestador coordina siete subagentes; no ejecuta comandos</span></div>
+<div class="rule"><b>02</b><span>product-owner <span class="hl">siempre</span> precede a planificador</span></div>
+<div class="rule"><b>03</b><span>El usuario aprueba el plan antes de construir</span></div>
+<div class="rule"><b>04</b><span>arquitecto y buscador solo entran si son necesarios</span></div>
+<div class="rule"><b>05</b><span>constructor &#8660; tester: loop hasta aprobar</span></div>
+<div class="rule"><b>06</b><span>Solo control-versiones ejecuta Git, con confirmaci&oacute;n ante riesgo</span></div>
+</div>
+</section>
+
+<!-- NAV / DOTS -->
+<div class="dots" id="dots"></div>
+<div class="nav">
+<button id="rp" class="prim" title="Repetir animaci&oacute;n (R)">&#8631;</button>
+<button id="pr" title="Anterior (&#8592;)">&#8592;</button>
+<span id="cntr">01 / 11</span>
+<button id="nx" title="Siguiente (&#8594;)">&#8594;</button>
+</div>
+
+</div></div>
+
+<script>
+(function(){
+var stg=document.getElementById('stg'),vp=document.getElementById('vp');
+var slides=Array.from(document.querySelectorAll('.slide'));
+var n=slides.length;
+var idx=0,tim;
+var prog=document.getElementById('prg');
+var cntr=document.getElementById('cntr');
+var dotsEl=document.getElementById('dots');
+slides.forEach(function(s,i){
+ var d=document.createElement('button');d.className='dot';d.dataset.i=i;
+ d.addEventListener('click',function(){go(i)});
+ dotsEl.appendChild(d);
+});
+var dots=Array.from(dotsEl.children);
+
+function fit(){
+ var s=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+ stg.style.transform='scale('+s+')';
+ stg.style.transformOrigin='0 0';
+ stg.style.left=((window.innerWidth-1920*s)/2)+'px';
+ stg.style.top=((window.innerHeight-1080*s)/2)+'px';
+}
+window.addEventListener('resize',fit);fit();
+
+function go(j){
+ if(j<0||j>=n||j===idx)return;
+ slides.forEach(function(s,i){s.className='slide'+(i===j?' active':'')});
+ dots.forEach(function(d,i){d.className=(i===j?'act':'')});
+ idx=j;
+ prog.style.width=Math.round(100*(j+1)/n)+'%';
+ cntr.textContent=('0'+(j+1)).slice(-2)+' / '+n;
+ runSteps(j);
+}
+
+function runSteps(j){
+ if(tim){clearTimeout(tim);tim=null}
+ var s=slides[j];
+ var steps=s.getAttribute('data-steps');
+ if(!steps)return;
+ var ids=steps.split(' ').filter(Boolean);
+ if(!ids.length)return;
+ var els=ids.map(function(id){return document.getElementById(id)}).filter(Boolean);
+ if(!els.length)return;
+ els.forEach(function(e){e.className=e.className.replace(/ lit| don/g,'')});
+ function step(k){
+  if(k>=els.length)return;
+  if(k>0){
+   var prev=els[k-1];
+   prev.className=prev.className.replace(/ lit/g,'')+' don';
+  }
+  var cur=els[k];
+  cur.className=cur.className.replace(/ don/g,'')+' lit';
+  tim=setTimeout(function(){step(k+1)},950);
+ }
+ tim=setTimeout(function(){step(0)},320);
+}
+
+function prev(){go(idx-1)}
+function next(){go(idx+1)}
+document.addEventListener('keydown',function(e){
+ if(e.target.tagName==='INPUT')return;
+ switch(e.key){
+  case 'ArrowLeft':case 'ArrowUp':e.preventDefault();prev();break;
+  case 'ArrowRight':case 'ArrowDown':case ' ':e.preventDefault();next();break;
+  case 'Home':e.preventDefault();go(0);break;
+  case 'End':e.preventDefault();go(n-1);break;
+  case 'r':case 'R':e.preventDefault();runSteps(idx);break;
+ }
+});
+document.getElementById('rp').addEventListener('click',function(){runSteps(idx)});
+document.getElementById('pr').addEventListener('click',prev);
+document.getElementById('nx').addEventListener('click',next);
+
+// init
+go(0);
+})();
+</script>
+</body></html>
