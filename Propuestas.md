@@ -16,9 +16,11 @@
 - [ ] **Conectores multi-externos**: Skills para integrarse con web search, bases de datos, APIs y ejecutar código seguro.
 - [ ] **Aprendizaje desde feedback**: Registro de feedback humano + ajuste de prompts/ejemplos y ranking de mejores estrategias.
 - [x] **Ensamble agentico**: Orquestrador de múltiples agentes especializados (explorador, experto, revisor) que cooperan en una tarea.
-     *Consideración*: Sigue en mejoras.
+- [x] **Agregar skill de terceros**: Ejemplo de github.com/w7panel/w7panel/tree/main/.opencode/skills.
 
 ### Plugins opencode
+- [] *opendesign**: Herramienta de diseño para generar prototipos funcionales, interfaces, páginas web o presentaciones en archivos html.
+     *Consideración*: importa /skill predefinidas de opendesign.
 - [x] **opencode-snip**: Recortar salida de la terminal para evitar ruido que cosume tokens.
      *Consideración*: Sigue en prueba, tener en cuenta para el ahorro de tokens.
 - [x] **envsitter-guard**: Evita que el agente filtre secretos a las LLMS.
