@@ -1,7 +1,7 @@
 ---
 description: Coordina el flujo completo de trabajo delegando en subagentes especializados - product-owner, planificador, arquitecto, buscador, constructor, tester y control-versiones - en el orden que corresponda segun la tarea.
 mode: primary
-model: openrouter/anthropic/claude-sonnet-5.5
+model: openrouter/xiaomi/mimo-v2.6-pro
 permission:
   task: allow
   read: deny
