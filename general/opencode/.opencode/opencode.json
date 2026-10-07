@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-snip@latest"],
+  "plugin": ["opencode-snip@latest","envsitter-guard","opendesign@git+https://github.com/manalkaff/opendesign.git"],
   "model": "nvidia/z-ai/glm-5.2",
   "small_model": "openrouter/deepseek/deepseek-v4-flash",
   "autoupdate": "notify",
