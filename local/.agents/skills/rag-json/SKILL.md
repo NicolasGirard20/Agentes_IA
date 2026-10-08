@@ -68,20 +68,45 @@ Comprobar si las librerías necesarias están disponibles. Si faltan o es la pri
 
 ---
 
-## Prerrequisitos de Ejecución
+## Prerrequisitos de Ejecución y Gestión de Qdrant
 
-Antes de ejecutar la búsqueda RAG, validar:
+Antes de ejecutar la búsqueda RAG, validar los siguientes requisitos:
 
-1. **Instancia de Qdrant activa**:
-   - Por defecto en `http://localhost:6333` (HTTP) y `6334` (gRPC).
-   - Si no está corriendo y se cuenta con Docker:
-     ```bash
-     docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant
-     ```
-2. **Variable de entorno `OPENROUTER_API_KEY`**:
-   - Debe estar definida en el entorno o en un archivo `.env` dentro de `<skill>/scripts/.env` o en la raíz.
-3. **Archivo `project_map.json`**:
-   - Debe existir el mapa del proyecto generado previamente (por ejemplo en `local/.agents/skills/project-mapper/resources/project_map.json` o en `./project_map.json`).
+### 1. Estado de Qdrant y Consulta al Usuario
+El servicio de Qdrant debe estar activo y respondiendo en `http://localhost:6333` (HTTP) y `6334` (gRPC).
+
+- **Comprobación de estado:**
+  El agente debe verificar si el servicio o contenedor está respondiendo antes de lanzar la búsqueda:
+  ```bash
+  curl -s -f http://localhost:6333/healthz > /dev/null 2>&1
+  ```
+
+- **Acción si Qdrant NO está corriendo:**
+  > [!IMPORTANT]
+  > **El agente NO debe iniciar el contenedor automáticamente a ciegas.**
+  > Si la comprobación falla, debe **preguntar explícitamente al usuario** si desea que active el contenedor de Qdrant.
+
+  **Protocolo de consulta:**
+  1. Informar al usuario: *"El servicio de Qdrant no está corriendo en localhost:6333, el cual es necesario para la recuperación vectorial de rag-json."*
+  2. Preguntar al usuario: *"¿Querés que active el contenedor Docker de Qdrant ahora?"*
+  3. **Si el usuario acepta / confirma:**
+     - Si ya existe un contenedor previo (detenido):
+       ```bash
+       docker start qdrant-local || docker start qdrant
+       ```
+     - Si no existe ningún contenedor previo:
+       ```bash
+       docker run -d --name qdrant-local -p 6333:6333 -p 6334:6334 qdrant/qdrant
+       ```
+     - Verificar que el endpoint responda (`curl -s -f http://localhost:6333/healthz`) y continuar con la ejecución del script.
+  4. **Si el usuario rechaza o no utiliza Docker:**
+     - Suspender la ejecución de la skill informando que se requiere Qdrant activo en `localhost:6333` para proceder.
+
+### 2. Variable de entorno `OPENROUTER_API_KEY`
+- Debe estar definida en el entorno o en un archivo `.env` dentro de `<skill>/scripts/.env` o en la raíz.
+
+### 3. Archivo `project_map.json`
+- Debe existir el mapa del proyecto generado previamente (por ejemplo en `local/.agents/skills/project-mapper/resources/project_map.json` o en `.agents/skills/project-mapper/resources/project_map.json`).
 
 ---
 
