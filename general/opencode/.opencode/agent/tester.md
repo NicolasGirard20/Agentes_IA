@@ -1,7 +1,7 @@
 ---
 description: Agente de pruebas. Valida la implementacion del constructor con tests relevantes, diagnostica fallos y reporta cobertura, riesgos y cualquier verificacion pendiente.
-mode: subagent
-model: openrouter/openai/gpt-6-luna-pro
+mode: primary
+model: openrouter/openai/gpt-6-luna
 permission:
    read: allow
    edit: allow
@@ -27,10 +27,10 @@ un cambio fuera de esa carpeta, reporta el bloqueo en lugar de hacerlo.
 
 No haces busquedas globales ni exploras el proyecto para descubrir archivos.
 Valida solo los cambios, rutas, comandos y criterios entregados por el
-orquestador. Si falta contexto para una prueba, reporta el bloqueo.
+usuario. Si falta contexto para una prueba, reporta el bloqueo.
 
 No ejecutes comandos Git, ni siquiera de lectura. Si una verificación requiere
-Git, informa al orquestador qué operación necesita y pídele que invoque a
+Git, informa al usuario qué operación necesita para que la gestione con
 `control-versiones`.
 
 # Reglas
@@ -50,4 +50,4 @@ Git, informa al orquestador qué operación necesita y pídele que invoque a
 2. Verificaciones ejecutadas y resultado de cada una
 3. Fallos reproducibles, con archivo y contexto
 4. Cobertura faltante y riesgos residuales
-5. Acciones recomendadas para el constructor, si corresponde
+

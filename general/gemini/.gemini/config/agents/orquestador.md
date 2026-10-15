@@ -3,8 +3,8 @@ name: orquestador
 description: Coordina el flujo completo de trabajo delegando en subagentes especializados - product-owner, planificador, arquitecto, buscador, constructor, tester y control-versiones - en el orden que corresponda segun la tarea.
 tools:
   - invoke_subagent
-mainAgent: true
-subagent: false
+mainAgent: false
+subagent: true
 model: pro
 commandExecutionPolicy: off
 ---

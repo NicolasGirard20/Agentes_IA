@@ -39,6 +39,20 @@ def load_dotenv(path: Path = Path(__file__).with_name(".env")) -> None:
         os.environ[key] = value
 
 
+def find_project_root() -> Path:
+    """Raíz del proyecto = padre de la carpeta `.agents` que contiene esta skill."""
+    here = Path(__file__).absolute()
+    for parent in here.parents:
+        if parent.name == ".agents":
+            return parent.parent
+    return Path.cwd()
+
+
+PROJECT_ROOT = find_project_root()
+DEFAULT_MAP_PATH = str(PROJECT_ROOT / ".agents" / "skills" / "project-mapper" / "resources" / "project_map.json")
+
+# Prioridad: variable ya exportada > .env de la raíz del proyecto > scripts/.env
+load_dotenv(PROJECT_ROOT / ".env")
 load_dotenv()
 
 # Configuraciones por defecto
@@ -134,6 +148,15 @@ TECH_SYNONYMS = {
 
 CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 NON_ALNUM = re.compile(r"[^\w]+")
+
+VERBOSE = False
+DEBUG_FIELDS = {"dense", "lexical", "boost", "matched_tokens", "matched_symbols", "imports", "exports"}
+
+
+def info(msg: str) -> None:
+    """Mensajes informativos a stderr, solo con --verbose (ahorra tokens al agente)."""
+    if VERBOSE:
+        print(msg, file=sys.stderr)
 
 
 def _safe_slug(name: str) -> str:
@@ -378,7 +401,7 @@ def embed_texts(
     for batch_num, start in enumerate(range(0, len(texts), batch_size), start=1):
         batch = texts[start:start + batch_size]
         if total_batches > 1:
-            print(f"Embeddings ({batch_num}/{total_batches}): {len(batch)} textos...", file=sys.stderr)
+            info(f"Embeddings ({batch_num}/{total_batches}): {len(batch)} textos...")
         data = _openrouter_post({"model": model, "input": batch, "encoding_format": "float"}, headers)
         items = data.get("data") or []
         for item in sorted(items, key=lambda d: d.get("index", 0)):
@@ -440,7 +463,7 @@ class ProjectMapEngine:
 
         collection_exists = self.client.collection_exists(self.collection_name)
         if not force and collection_exists and state.get("map_hash") == file_hash and state.get("model") == self.embed_model:
-            print(f"Colección '{self.collection_name}' al día (sin cambios en {self.map_path}).", file=sys.stderr)
+            info(f"Colección '{self.collection_name}' al día (sin cambios en {self.map_path}).")
             return
 
         files = self.data.get("files", [])
@@ -549,13 +572,20 @@ class ProjectMapEngine:
             docs.append(tokenize(text))
         return compute_idf(docs)
 
-    def search(self, query: str, top_k: int = 5, min_score: float = 0.2) -> list[dict]:
+    def search(
+        self,
+        query: str,
+        top_k: int = 3,
+        min_score: float = 0.2,
+        include_meta: bool = False,
+        rel_cutoff: float = 0.6,
+    ) -> list[dict]:
         query = query.strip()
         if not query:
             return []
 
         if not self.client.collection_exists(self.collection_name):
-            print(f"Colección '{self.collection_name}' no existe. Indexando...", file=sys.stderr)
+            info(f"Colección '{self.collection_name}' no existe. Indexando...")
             self.index(force=True)
 
         primary_tokens = tokenize(query, stems=False)
@@ -563,9 +593,6 @@ class ProjectMapEngine:
         query_tokens = expand_query_tokens(tokenize(query), self.custom_synonyms)
 
         idf = self._query_idf()
-        query_tf = Counter()
-        for tok in query_tokens:
-            query_tf[tok] += 1.0 if tok in primary_set else 0.55
         query_sparse = sparse_from_fields({"q": query_tokens}, idf)
 
         query_dense = embed_texts([query], model=self.embed_model, api_key=self.api_key, batch_size=1)[0]
@@ -644,30 +671,33 @@ class ProjectMapEngine:
             })
 
         results.sort(key=lambda r: (r["score"], r["dense"]), reverse=True)
-        return [r for r in results if r["score"] >= min_score][:top_k]
+        if not include_meta:
+            results = [r for r in results if r["language"] != "meta"]
+        results = [r for r in results if r["score"] >= min_score]
+        if results and rel_cutoff > 0:
+            floor = results[0]["score"] * rel_cutoff
+            results = [r for r in results if r["score"] >= floor]
+        return results[:top_k]
+
+
+def _clip(text: str, limit: int) -> str:
+    text = " ".join(str(text).split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
 def format_rag_context(results: list[dict], project_name: str) -> str:
-    """Genera contexto Markdown compacto y de alta densidad para inyectar en prompts de LLM."""
+    """Genera contexto compacto (una línea por archivo) para inyectar en prompts de LLM."""
     if not results:
-        return f"No se encontró contexto relevante para el proyecto '{project_name}'."
+        return f"Sin resultados relevantes en '{project_name}'."
 
-    lines = [f"### Contexto Relevante del Proyecto: {project_name}\n"]
-    for i, r in enumerate(results, start=1):
-        lines.append(f"#### [{i}] `{r['file']}` (Score: {r['score']})")
-        lines.append(f"- **Resumen**: {r['summary']}")
-        if r.get("language") and r["language"] != "meta":
-            lines.append(f"- **Lenguaje**: {r['language']}")
-        if r.get("functions"):
-            lines.append(f"- **Funciones**: {', '.join(str(f) for f in r['functions'][:8])}")
-        if r.get("classes"):
-            lines.append(f"- **Clases**: {', '.join(str(c) for c in r['classes'][:6])}")
-        if r.get("exports"):
-            lines.append(f"- **Exporta**: {', '.join(str(e) for e in r['exports'][:6])}")
-        if r.get("dependents"):
-            lines.append(f"- **Usado por**: {', '.join(str(d) for d in r['dependents'][:4])}")
-        lines.append("")
-    return "\n".join(lines).strip()
+    lines = []
+    for r in results:
+        symbols = [str(s) for s in (r.get("functions") or []) + (r.get("classes") or [])][:3]
+        line = f"- `{r['file']}` — {_clip(r.get('summary', ''), 120)}"
+        if symbols:
+            line += f" [{', '.join(symbols)}]"
+        lines.append(line)
+    return "\n".join(lines)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -675,9 +705,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="Búsqueda semántica híbrida (denso + sparse) y RAG sobre cualquier project_map.json con Qdrant."
     )
     parser.add_argument("query", nargs="*", help="Consulta en lenguaje natural")
-    parser.add_argument("--top-k", type=int, default=5, help="Cantidad de resultados (def: 5)")
+    parser.add_argument("--top-k", type=int, default=3, help="Cantidad de resultados (def: 3)")
     parser.add_argument("--min-score", type=float, default=0.2, help="Umbral mínimo de score combinado (def: 0.2)")
-    parser.add_argument("--map", dest="map_path", default="project_map.json", help="Ruta al archivo project_map.json")
+    parser.add_argument("--rel-cutoff", type=float, default=0.6, help="Descarta resultados con score < rel*score_top (def: 0.6; 0 desactiva)")
+    parser.add_argument("--include-meta", action="store_true", help="Incluye docs meta ([arquitectura]/[proyecto])")
+    parser.add_argument("--verbose", action="store_true", help="Muestra mensajes informativos en stderr")
+    parser.add_argument("--map", dest="map_path", default=DEFAULT_MAP_PATH, help="Ruta al archivo project_map.json (def: <raíz>/.agents/skills/project-mapper/resources/project_map.json)")
     parser.add_argument("--collection", default=None, help="Nombre de colección (def: derivado de project_name)")
     parser.add_argument("--reindex", action="store_true", help="Fuerza la reindexación")
     parser.add_argument("--include-all", action="store_true", help="Incluye archivos filtrados por ruido")
@@ -696,10 +729,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    global VERBOSE
+    VERBOSE = args.verbose
 
     api_key = args.api_key or os.environ.get("OPENROUTER_API_KEY", "")
     if not api_key:
-        print("ERROR: Falta OPENROUTER_API_KEY. Configurala en .env o pasá --api-key.", file=sys.stderr)
+        print(f"ERROR: Falta OPENROUTER_API_KEY. Definila en {PROJECT_ROOT / '.env'} (o exportala / --api-key).", file=sys.stderr)
         return 2
 
     try:
@@ -725,9 +760,19 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     def run_query(q: str):
-        results = engine.search(q, top_k=args.top_k, min_score=args.min_score)
+        results = engine.search(
+            q,
+            top_k=args.top_k,
+            min_score=args.min_score,
+            include_meta=args.include_meta,
+            rel_cutoff=args.rel_cutoff,
+        )
         if args.json:
-            print(json.dumps({"query": q, "project": engine.project_name, "results": results}, ensure_ascii=False, indent=2))
+            slim = [{k: v for k, v in r.items() if k not in DEBUG_FIELDS} for r in results]
+            print(json.dumps(
+                {"query": q, "project": engine.project_name, "results": slim},
+                ensure_ascii=False, separators=(",", ":"),
+            ))
         elif args.rag:
             print(format_rag_context(results, engine.project_name))
         else:
