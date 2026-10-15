@@ -1,6 +1,22 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-snip@latest","envsitter-guard","opendesign@git+https://github.com/manalkaff/opendesign.git"],
+  "plugin": [
+    "opencode-snip@latest",
+    "envsitter-guard"
+  ],
+  "mcp": {
+    "figma": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "figma-developer-mcp",
+        "--figma-api-key=FIGMA_API_KEY",
+        "--stdio"
+      ],
+      "enabled": true
+    }
+  },
   "model": "nvidia/z-ai/glm-5.2",
   "small_model": "openrouter/deepseek/deepseek-v4-flash",
   "autoupdate": "notify",
@@ -25,27 +41,43 @@
       "npm": "@openrouter/ai-sdk-provider",
       "name": "OpenRouter",
       "models": {
-        "deepseek/deepseek-v4-flash": { "name": "DeepSeek V4 Flash (fallback build)" },
-        "deepseek/deepseek-v4-pro": { "name": "DeepSeek V4 Pro" },
+        "deepseek/deepseek-v4-flash": {
+          "name": "DeepSeek V4 Flash (fallback build)"
+        },
+        "deepseek/deepseek-v4-pro": {
+          "name": "DeepSeek V4 Pro"
+        },
         "moonshotai/kimi-k2.6": {
           "name": "Kimi K2.6",
           "reasoning": true,
           "tool_call": true,
-          "limit": { "context": 262144, "output": 32768 },
+          "limit": {
+            "context": 262144,
+            "output": 32768
+          },
           "options": {
-            "thinking": { "type": "enabled", "budgetTokens": 5000 }
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 5000
+            }
           }
         },
         "anthropic/claude-haiku-4.5": {
           "name": "Claude Haiku 4.5",
           "options": {
-            "thinking": { "type": "enabled", "budgetTokens": 4000 }
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 4000
+            }
           }
         },
         "anthropic/claude-sonnet-5": {
           "name": "Claude Sonnet 5",
           "options": {
-            "thinking": { "type": "enabled", "budgetTokens": 14000 }
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 14000
+            }
           }
         }
       }

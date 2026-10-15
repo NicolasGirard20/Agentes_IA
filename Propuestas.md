@@ -19,10 +19,14 @@
 - [x] **Agregar skill de terceros**: Ejemplo de github.com/w7panel/w7panel/tree/main/.opencode/skills.
 
 ### Plugins opencode
-- [] *opendesign**: Herramienta de diseño para generar prototipos funcionales, interfaces, páginas web o presentaciones en archivos html.
-     *Consideración*: importa /skill predefinidas de opendesign.
+- [x] *opendesign**: Herramienta de diseño para generar prototipos funcionales, interfaces, páginas web o presentaciones en archivos html.
+     *Consideración*: Se reemplazó solución por mcp de figma.
 - [x] **opencode-snip**: Recortar salida de la terminal para evitar ruido que cosume tokens.
      *Consideración*: Sigue en prueba, tener en cuenta para el ahorro de tokens.
 - [x] **envsitter-guard**: Evita que el agente filtre secretos a las LLMS.
 - [x] *TokenScope**: Análisis detallado del uso de tokens y tracking de costes por sesión.
      *Consideración*: comando es /tokenscope.
+
+### Model Context Protocol
+- [x] *figma-mcp**: conectarse a plantillas de figma
+     *Consideración*: 
