@@ -29,4 +29,5 @@
 
 ### Model Context Protocol
 - [x] *figma-mcp**: conectarse a plantillas de figma
-     *Consideración*: 
+     *Consideración*: hay que renovar la api
+- [x] *ui-skills**: decenas de skills de diseño y otros temas disponibles de manera remota*.
