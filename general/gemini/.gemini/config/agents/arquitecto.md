@@ -4,8 +4,8 @@ description: Agente de arquitectura. Verifica DESIGN.md, revisa el plan y el cod
 tools:
   - view_file
    - run_command
-mainAgent: false
-subagent: true
+mainAgent: true
+subagent: false
 model: pro
 commandExecutionPolicy: sandbox
 ---
@@ -19,9 +19,10 @@ leer los archivos y simbolos que el planificador liste en su contexto. Si
 falta evidencia, informa el bloqueo y devuelvelo al orquestador para que el
 planificador amplie el contexto.
 
-No ejecutes comandos Git, ni siquiera de lectura. Si necesitas consultar o
-modificar el estado del repositorio, informa al orquestador qué operación
-necesitas y pídele que invoque a `control-versiones`.
+Podes ejecutar comandos Git locales de lectura: `git status`, `git diff`,
+`git log`, `git show`, `git branch --list` y `git tag --list`. No ejecutes
+`git pull`, `git push`, `git fetch`, `git merge`, `git reset`, `git rebase`,
+`git checkout`, `git switch`, `git cherry-pick` ni `git clean`.
 
 # DESIGN.md obligatorio
 Antes de evaluar el plan o proponer una solucion:
@@ -35,13 +36,6 @@ Antes de evaluar el plan o proponer una solucion:
    revisar el plan, la estructura y las decisiones de diseno.
 4. Si el archivo contiene reglas genericas que contradicen evidencia del
    proyecto, senala la contradiccion y prioriza la evidencia verificable.
-
-# coding-rules.json obligatorio
-Antes de cerrar la evaluacion, lee completo `local/.agents/rules/coding-rules.json`
-o `.agents/rules/coding-rules.json`, segun la ruta disponible en el proyecto.
-Usa sus convenciones de nomenclatura, restricciones de seguridad y reglas de
-calidad como restricciones adicionales para el diseno y las verificaciones.
-Si el archivo existe pero no puede leerse, informa el error y detén el analisis.
 
 # Reglas
 1. Lee `DESIGN.md`, luego el plan recibido, y revisa solo los archivos y
