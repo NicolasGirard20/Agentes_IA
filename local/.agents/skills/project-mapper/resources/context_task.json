@@ -1,1 +1,34 @@
-{}
+{
+  "query": "H",
+  "generated_at": "2026-10-25T14:18:30.318226+00:00",
+  "project_name": "Agentes_IA",
+  "relevant_architecture": {
+    "entry_points": [],
+    "core_modules": []
+  },
+  "files": [],
+  "total_relevant_files": 0,
+  "direct_matches": 0,
+  "dependency_includes": 0,
+  "injection_strategy": "selective",
+  "estimated_tokens": 0,
+  "efficiency": {
+    "status": "BYPASS",
+    "warnings": [
+      "consulta con poca información para ranking léxico",
+      "no se encontraron coincidencias directas"
+    ],
+    "recommendations": [
+      "describir dominio, archivo, símbolo o comportamiento",
+      "reformular la consulta o no usar el mapper"
+    ],
+    "metrics": {
+      "query_terms": 0,
+      "map_tokens_estimated": 361,
+      "context_tokens_estimated": 0,
+      "direct_matches": 0,
+      "total_relevant_files": 0,
+      "dependency_expansion_ratio": 0.0
+    }
+  }
+}

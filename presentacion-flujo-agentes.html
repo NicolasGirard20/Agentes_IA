@@ -95,14 +95,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:"Space Gr
 <div class="ctr">
 <p class="k" style="font-size:24px;text-transform:none">AGENTES_IA</p>
 <h1>Flujo actual&nbsp;de agentes</h1>
-<p class="sub">Un recorrido visual por la coordinaci&#243;n del orquestador y sus siete subagentes: de la solicitud del usuario al resultado verificado.</p>
+<p class="sub">Un recorrido visual por la coordinaci&#243;n del orquestador y sus seis subagentes: de la solicitud del usuario al resultado verificado.</p>
 <p class="hint">&larr; &rarr; navegar &middot; <span style="color:var(--decide)">R</span> repite la animaci&#243;n</p>
 </div>
 </section>
 
 <!-- S2 ELENCO -->
 <section class="slide" id="s2" data-steps='["s2-orq","s2-po","s2-plan","s2-arch","s2-web","s2-build","s2-test","s2-git","s2-def"]'>
-<header class="sh"><div class="lft"><p class="k">01 &middot; El elenco</p><h2>Un orquestador, siete subagentes y un default</h2></div></header>
+<header class="sh"><div class="lft"><p class="k">01 &middot; El elenco</p><h2>Un orquestador, seis subagentes y un general</h2></div></header>
 <div class="diag" id="d2">
 <svg viewBox="0 0 1696 740"><defs><marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
 <line x1="840" y1="360" x2="300" y2="95" class="edge" marker-end="url(#a2)"/>
@@ -110,7 +110,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:"Space Gr
 <line x1="840" y1="360" x2="1380" y2="95" class="edge" marker-end="url(#a2)"/>
 <line x1="840" y1="360" x2="1505" y2="360" class="edge" marker-end="url(#a2)"/>
 <line x1="840" y1="360" x2="1380" y2="612" class="edge" marker-end="url(#a2)"/>
-<line x1="840" y1="360" x2="840" y2="620" class="edge" marker-end="url(#a2)"/>
 <line x1="840" y1="360" x2="300" y2="612" class="edge" marker-end="url(#a2)"/>
 <line x1="840" y1="360" x2="175" y2="360" class="edge" marker-end="url(#a2)"/>
 </svg>
@@ -120,9 +119,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:"Space Gr
 <div class="n ag" id="s2-arch" style="left:1380px;top:95px;width:270px;min-height:112px"><span class="t">arquitecto</span><span class="c">valida dise&ntilde;o y riesgos</span></div>
 <div class="n ag" id="s2-web" style="left:1505px;top:360px;width:270px;min-height:112px"><span class="t">buscador</span><span class="c">investiga fuentes externas</span></div>
 <div class="n ag" id="s2-build" style="left:1380px;top:612px;width:270px;min-height:112px"><span class="t">constructor</span><span class="c">implementa y verifica</span></div>
-<div class="n ag" id="s2-test" style="left:840px;top:620px;width:270px;min-height:112px"><span class="t">tester</span><span class="c">prueba e informa riesgos</span></div>
+<div class="n ag" id="s2-test" style="left:175px;top:612px;width:270px;min-height:112px"><span class="t">tester</span><span class="c">prueba e informa riesgos</span></div>
 <div class="n ag" id="s2-git" style="left:300px;top:612px;width:270px;min-height:112px"><span class="t">control-versiones</span><span class="c">ejecuta Git con confirmaci&oacute;n</span></div>
-<div class="n ag" id="s2-def" style="left:175px;top:360px;width:270px;min-height:112px"><span class="t">default</span><span class="c">tareas generales &middot; Git solo lectura</span></div>
+<div class="n ag" id="s2-def" style="left:175px;top:360px;width:270px;min-height:112px"><span class="t">general</span><span class="c">analiza, busca, implementa o delega</span></div>
 </div>
 <div class="notes" style="bottom:60px"><div class="n"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--agent);vertical-align:middle"></span> agente</span></div><div class="n"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid var(--decide);vertical-align:middle"></span> decisi&oacute;n</span></div><div class="n"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:20px;height:14px;border-radius:99px;border:1.5px solid var(--muted);background:var(--bg2);vertical-align:middle"></span> usuario / resultado</span></div></div>
 </section>
@@ -141,7 +140,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:"Space Gr
 <div class="n tm" id="s3-in" style="left:200px;top:350px;width:280px;min-height:84px"><span class="tt">Solicitud del usuario</span></div>
 <div class="n dc" id="s3-route" style="left:620px;top:350px;width:270px;height:160px"><div class="di"><span class="dt">Ruta de trabajo</span></div></div>
 <div class="n ag" id="s3-po" style="left:1100px;top:195px;width:310px;min-height:112px"><span class="t">product-owner</span><span class="c">define alcance y requisitos</span></div>
-<div class="n ag" id="s3-def" style="left:1100px;top:515px;width:310px;min-height:112px"><span class="t">default</span><span class="c">analiza, busca, implementa o delega</span></div>
+<div class="n ag" id="s3-def" style="left:1100px;top:515px;width:310px;min-height:112px"><span class="t">general</span><span class="c">analiza, busca, implementa o delega</span></div>
 <div class="e" id="s3-l1" style="left:800px;top:293px">Flujo especializado</div>
 <div class="e" style="left:800px;top:393px">Tarea general</div>
 <div class="n ch" style="left:1480px;top:195px;width:200px"><span class="t">fases 1 a 6 &rarr;</span></div>
@@ -236,27 +235,17 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:"Space Gr
 <div class="notes"><div class="n"><span>Solo si se necesita API, librer&iacute;a, best practices o trade-off actual</span></div></div>
 </section>
 
-<!-- S8 CONSTRUCCION PRUEBAS -->
-<section class="slide" id="s8" data-steps='["s8-bu","s8-e1","s8-te","s8-e2","s8-st","s8-fa","s8-fx","s8-eb","s8-te","s8-st","s8-ek","s8-gd"]'>
-<header class="sh"><div class="lft"><p class="k">07 &middot; Fase 5 &middot; Construcci&oacute;n y pruebas</p><h2>constructor &#8660; tester: el loop de calidad</h2></div></header>
+<!-- S8 CONSTRUCCION -->
+<section class="slide" id="s8" data-steps='["s8-bu","s8-e1","s8-gd"]'>
+<header class="sh"><div class="lft"><p class="k">07 &middot; Fase 5 &middot; Construcci&oacute;n</p><h2>constructor: implementa y verifica, luego decide Git</h2></div></header>
 <div class="diag" id="d8">
 <svg viewBox="0 0 1696 740"><defs><marker id="a8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
-<line id="s8-e1" x1="410" y1="330" x2="510" y2="330" class="edge" marker-end="url(#a8)"/>
-<line id="s8-e2" x1="810" y1="330" x2="905" y2="330" class="edge" marker-end="url(#a8)"/>
-<line id="s8-ek" x1="1195" y1="330" x2="1345" y2="330" class="edge" marker-end="url(#a8)"/>
-<line id="s8-fa" x1="1050" y1="410" x2="1050" y2="545" class="edge" marker-end="url(#a8)"/>
-<polyline id="s8-eb" points="900,600 660,600 660,388" class="edge" marker-end="url(#a8)"/>
+<line id="s8-e1" x1="680" y1="350" x2="1020" y2="350" class="edge" marker-end="url(#a8)"/>
 </svg>
-<div class="n ag" id="s8-bu" style="left:260px;top:330px;width:300px;min-height:116px"><span class="t">constructor</span><span class="c">implementa y verifica</span></div>
-<div class="n ag" id="s8-te" style="left:660px;top:330px;width:300px;min-height:116px"><span class="t">tester</span><span class="c">prueba e informa riesgos</span></div>
-<div class="n dc" id="s8-st" style="left:1050px;top:330px;width:290px;height:160px"><div class="di"><span class="dt">&iquest;Resultado del tester?</span></div></div>
-<div class="n ag" id="s8-fx" style="left:1050px;top:600px;width:300px;min-height:110px"><span class="t">constructor</span><span class="c">corrige la implementaci&oacute;n</span></div>
-<div class="n dc" id="s8-gd" style="left:1480px;top:330px;width:280px;height:150px"><div class="di"><span class="dt">&iquest;Se solicit&oacute; acci&oacute;n Git?</span></div></div>
-<div class="e" style="left:1268px;top:240px">APROBADO o APROBADO CON RIESGOS</div>
-<div class="e acc" style="left:1120px;top:475px">FALLA</div>
-<div class="e" style="left:780px;top:575px">vuelve a probar</div>
+<div class="n ag" id="s8-bu" style="left:520px;top:350px;width:320px;min-height:116px"><span class="t">constructor</span><span class="c">implementa y verifica</span></div>
+<div class="n dc" id="s8-gd" style="left:1160px;top:350px;width:280px;height:150px"><div class="di"><span class="dt">&iquest;Se solicit&oacute; acci&oacute;n Git?</span></div></div>
 </div>
-<div class="notes"><div class="n"><span>tester siempre ocurre despu&eacute;s de constructor</span></div><div class="n"><span>constructor no gestiona Git</span></div></div>
+<div class="notes"><div class="n"><span>constructor implementa y verifica; no gestiona Git</span></div></div>
 </section>
 
 <!-- S9 GIT -->
@@ -294,7 +283,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:"Space Gr
 
 <!-- S10 RUTA GENERAL -->
 <section class="slide" id="s10" data-steps='["s10-df","s10-e1","s10-dg","s10-er","s10-dr","s10-ew","s10-dw","s10-eo","s10-ou"]'>
-<header class="sh"><div class="lft"><p class="k">09 &middot; Ruta general</p><h2>default: la v&iacute;a r&aacute;pida, con l&iacute;mites en Git</h2></div></header>
+<header class="sh"><div class="lft"><p class="k">09 &middot; Ruta general</p><h2>general: la v&iacute;a r&aacute;pida, con l&iacute;mites en Git</h2></div></header>
 <div class="diag" id="d10">
 <svg viewBox="0 0 1696 740"><defs><marker id="a10" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#475569"/></marker></defs>
 <line id="s10-e1" x1="310" y1="350" x2="360" y2="350" class="edge" marker-end="url(#a10)"/>
@@ -305,7 +294,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:"Space Gr
 <polyline id="s10-eu" points="490,425 490,550 710,550" class="edge" marker-end="url(#a10)"/>
 <line x1="1010" y1="550" x2="1230" y2="550" class="edge dsh" marker-end="url(#a10)"/>
 </svg>
-<div class="n ag" id="s10-df" style="left:170px;top:350px;width:280px;min-height:112px"><span class="t">default</span><span class="c">analiza, busca, implementa o delega</span></div>
+<div class="n ag" id="s10-df" style="left:170px;top:350px;width:280px;min-height:112px"><span class="t">general</span><span class="c">analiza, busca, implementa o delega</span></div>
 <div class="n dc" id="s10-dg" style="left:490px;top:350px;width:260px;height:150px"><div class="di"><span class="dt">&iquest;Necesita Git?</span></div></div>
 <div class="n ag" id="s10-dr" style="left:860px;top:150px;width:300px;min-height:100px"><span class="t">ejecuta Git de lectura</span></div>
 <div class="n ag" id="s10-dw" style="left:1230px;top:350px;width:280px;min-height:112px"><span class="t">resuelve la tarea general</span></div>
@@ -316,7 +305,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:"Space Gr
 <div class="e" style="left:610px;top:472px">Escritura, remoto o historial</div>
 <div class="e" style="left:850px;top:325px">No</div>
 </div>
-<div class="notes"><div class="n"><span>Excepci&oacute;n actual: default permite Git de lectura y bloquea escritura</span></div><div class="n"><span>Pol&iacute;tica vigente, no una pol&iacute;tica futura</span></div></div>
+<div class="notes"><div class="n"><span>Excepci&oacute;n actual: general permite Git de lectura y bloquea escritura</span></div><div class="n"><span>Pol&iacute;tica vigente, no una pol&iacute;tica futura</span></div></div>
 </section>
 
 <!-- S11 PANORAMA -->
@@ -339,16 +328,16 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:"Space Gr
 <div class="n ag" style="left:605px;top:120px;width:160px;min-height:72px"><span class="t sz">planificador</span></div>
 <div class="n dc" style="left:790px;top:120px;width:185px;height:95px"><div class="di"><span class="dt" style="font-size:23px">&iquest;aprueba?</span></div></div>
 <div class="n ag" style="left:1035px;top:120px;width:220px;min-height:72px"><span class="t sz">arquitecto + buscador</span><span class="c sz">condicionales</span></div>
-<div class="n ag" style="left:1295px;top:120px;width:260px;min-height:72px"><span class="t sz">constructor &#8660; tester</span></div>
+<div class="n ag" style="left:1295px;top:120px;width:260px;min-height:72px"><span class="t sz">constructor</span></div>
 <div class="n dc" style="left:1500px;top:120px;width:140px;height:95px"><div class="di"><span class="dt" style="font-size:23px">&iquest;Git?</span></div></div>
 <div class="n tm" style="left:1630px;top:120px;width:100px;min-height:72px"><span class="tt" style="font-size:22px">resultado</span></div>
 </div>
 <div class="rls">
-<div class="rule"><b>01</b><span>El orquestador coordina siete subagentes; no ejecuta comandos</span></div>
+<div class="rule"><b>01</b><span>El orquestador coordina seis subagentes; no ejecuta comandos</span></div>
 <div class="rule"><b>02</b><span>product-owner <span class="hl">siempre</span> precede a planificador</span></div>
 <div class="rule"><b>03</b><span>El usuario aprueba el plan antes de construir</span></div>
 <div class="rule"><b>04</b><span>arquitecto y buscador solo entran si son necesarios</span></div>
-<div class="rule"><b>05</b><span>constructor &#8660; tester: loop hasta aprobar</span></div>
+<div class="rule"><b>05</b><span>constructor implementa y verifica; tester prueba independientemente</span></div>
 <div class="rule"><b>06</b><span>Solo control-versiones ejecuta Git, con confirmaci&oacute;n ante riesgo</span></div>
 </div>
 </section>

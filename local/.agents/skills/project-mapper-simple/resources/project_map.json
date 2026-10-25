@@ -1,0 +1,87 @@
+{
+  "project_name": "Agentes_IA",
+  "generated_at": "2026-10-25T14:01:15.148301+00:00",
+  "total_files": 5,
+  "total_symbols": 0,
+  "architecture": {
+    "entry_points": [
+      "(detectar manualmente)"
+    ],
+    "core_modules": [],
+    "utils": [],
+    "tests": [],
+    "config": [],
+    "infrastructure": [],
+    "all_directories": []
+  },
+  "files": [
+    {
+      "path": ".gitignore",
+      "language": "unknown",
+      "size_lines": 4,
+      "summary": "Archivo sin extensión",
+      "imports": [],
+      "exports": [],
+      "classes": [],
+      "functions": [],
+      "complexity": "low"
+    },
+    {
+      "path": "FLUJO_AGENTES_ACTUAL.md",
+      "language": "unknown",
+      "size_lines": 96,
+      "summary": "Archivo .md",
+      "imports": [],
+      "exports": [],
+      "classes": [],
+      "functions": [],
+      "complexity": "medium"
+    },
+    {
+      "path": "Propuestas.md",
+      "language": "unknown",
+      "size_lines": 33,
+      "summary": "Archivo .md",
+      "imports": [],
+      "exports": [],
+      "classes": [],
+      "functions": [],
+      "complexity": "medium"
+    },
+    {
+      "path": "README.md",
+      "language": "unknown",
+      "size_lines": 54,
+      "summary": "Archivo .md",
+      "imports": [],
+      "exports": [],
+      "classes": [],
+      "functions": [],
+      "complexity": "medium"
+    },
+    {
+      "path": "presentacion-flujo-agentes.html",
+      "language": "unknown",
+      "size_lines": 448,
+      "summary": "Archivo .html",
+      "imports": [],
+      "exports": [],
+      "classes": [],
+      "functions": [],
+      "complexity": "high"
+    }
+  ],
+  "dependency_graph": {
+    ".gitignore": [],
+    "FLUJO_AGENTES_ACTUAL.md": [],
+    "Propuestas.md": [],
+    "README.md": [],
+    "presentacion-flujo-agentes.html": []
+  },
+  "metadata": {
+    "mapper_version": "3.0.0",
+    "languages_found": [
+      "unknown"
+    ]
+  }
+}
