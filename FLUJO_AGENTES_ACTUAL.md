@@ -30,6 +30,11 @@ flowchart TD
     TEST --> TEST_OUT[Reporte: APROBADO, APROBADO CON RIESGOS o FALLA]
     TEST_OUT --> OUT
 
+    PROPOSAL([Propuesta de implementación]) --> BO[build-orquestor\nPlanifica y divide]
+    BO --> BC[build-constructor\nConstruye la tarea asignada]
+    BC --> BC_VERIFY[Verificaciones de cada tarea]
+    BC_VERIFY --> OUT
+
     PLAN --> PLAN_OUT[Diagnóstico + plan + contexto]
     PLAN_OUT --> APPROVE{¿Usuario aprueba el plan?}
     APPROVE -->|No: pide cambios| PLAN
@@ -61,7 +66,7 @@ flowchart TD
 
     classDef agent fill:#e8f1fb,stroke:#2563eb,color:#111827;
     classDef decision fill:#fff7ed,stroke:#ea580c,color:#111827;
-    class PO,GEN,PLAN,ARCH,WEB,BUILD,TEST,GIT,PO_PERSIST agent;
+    class PO,GEN,PLAN,ARCH,WEB,BUILD,TEST,GIT,PO_PERSIST,BO,BC agent;
     class ROUTE,PO_STATUS,PDR,GEN_GIT,APPROVE,ARCH_DEC,SEARCH_DEC,GIT_DEC,GIT_RISK decision;
 ```
 
@@ -95,5 +100,7 @@ flowchart TD
 - `general/opencode/.opencode/agent/arquitecto.md`
 - `general/opencode/.opencode/agent/buscador.md`
 - `general/opencode/.opencode/agent/implementador.md`
+- `general/opencode/.opencode/agent/build-orquestor.md`
+- `general/opencode/.opencode/agent/build-constructor.md`
 - `general/opencode/.opencode/agent/tester.md`
 - `general/opencode/.opencode/agent/control-versiones.md`

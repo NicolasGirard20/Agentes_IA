@@ -10,7 +10,7 @@
 - [ ] **Composer dinámico de prompts**: Motor que arma prompts condicionales (bloques, bucles, ramificaciones) según meta/rol.
 - [ ] **Evaluador automático**: Tests de calidad de salida (exactitud, coherencia, toxicidad) y dashboard de métricas.
 - [ ] **Simulador de interacción agentica**: Entorno para simular pasos, rollouts y validar estrategias (útil para entrenar políticas).
-- [ ] **Controlador meta (planner)**: Descompone objetivos en sub-tasks y orquesta agentes especializados (planner → worker → verifier).
+- [x] **Controlador meta (planner)**: Descompone objetivos en sub-tasks y orquesta agentes especializados (`build-orquestor` → `build-constructor`).
 - [ ] **Verificador de acciones (safety & verification)**: Revisión automática de resultados/acciones propuestas contra reglas y sandboxed execution.
 - [ ] **Conectores multi-externos**: Skills para integrarse con web search, bases de datos, APIs y ejecutar código seguro.
 - [ ] **Aprendizaje desde feedback**: Registro de feedback humano + ajuste de prompts/ejemplos y ranking de mejores estrategias.

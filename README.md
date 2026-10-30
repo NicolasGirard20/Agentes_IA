@@ -25,6 +25,8 @@ Los agentes son roles especializados que colaboran durante el desarrollo. La con
 | `planificador` | Analiza la tarea, revisa el contexto y prepara un plan detallado sin modificar archivos. |
 | `arquitecto` | Valida el plan y define la solución técnica, sus límites, riesgos y decisiones de diseño. |
 | `constructor` | Implementa la solución, ejecuta las verificaciones locales y propone un commit. |
+| `build-orquestor` | Convierte la propuesta del usuario en un plan y divide la implementación entre constructores. |
+| `build-constructor` | Subagente que implementa únicamente la tarea que le asigna `build-orquestor`. |
 | `tester` | Ejecuta las pruebas relevantes, identifica fallos y reporta riesgos o cobertura pendiente. |
 | `buscador` | Investiga información técnica en internet usando fuentes verificables. |
 | `default` | Agente general para análisis, implementación y validación, con Git peligroso y comandos de base de datos bloqueados. |
@@ -36,6 +38,20 @@ orquestador -> product-owner -> planificador -> arquitecto -> constructor -> tes
 ```
 
 `buscador` se incorpora únicamente cuando la tarea requiere documentación externa, comparar alternativas o verificar una decisión técnica actual. El `orquestador` debe solicitar la aprobación del plan antes de pasar a la arquitectura y la implementación.
+
+Para tareas enfocadas exclusivamente en construir una propuesta, se puede usar
+el flujo `build-orquestor -> build-constructor`. El orquestador analiza y
+divide el trabajo; el constructor solo implementa las tareas recibidas y
+ejecuta sus verificaciones.
+
+Las tareas independientes pueden delegarse concurrentemente a varios
+`build-constructor`, agrupadas por niveles de dependencia. Las tareas que
+comparten archivos o estado deben ejecutarse secuencialmente.
+
+Cuando todas las tareas terminan correctamente, `build-orquestor` ofrece crear
+un commit Git separado por cada tarea. Los commits solo se crean con
+aprobación explícita del usuario y mediante `control-versiones`; no se realiza
+un commit combinado automáticamente.
 
 OpenCode también incluye agentes configurados en `general/opencode/.opencode/opencode.json`: `build` para implementar, `plan` para analizar, `quick-review` para revisiones rápidas, `deep-reasoning` para problemas complejos y `git` para operaciones de versionado.
 
