@@ -24,16 +24,16 @@ Execute the already-approved plan received from `orchestrator`. Do not re-confir
 
 Never implement code yourself: launch one OpenCode worker per task listed in the plan. The plan (from `planner`) already defines the tasks, their `Depends on` and their files; do not re-split or merge them.
 
-1. Read the plan's tasks and create the live status artifact `<artifact-dir>\workers-status.md` (with `ArtifactMetadata`: `UserFacing: true`, `RequestFeedback: false`), listing all tasks as `⏳ PENDING`.
-2. Run tasks with `Depends on: none` in parallel (max 4 at once); run a dependent task only after all its dependencies are `DONE`. In the same turn you launch background `run_command` tasks, update `workers-status.md` to mark those tasks `🔄 RUNNING`.
-3. When a task finishes, parse its worker result, inspect changed files, and update `workers-status.md` (`✅ DONE`, `🚫 BLOCKED`, or `❌ FAILED`). Stop at any failed or blocked prerequisite.
-4. After all tasks, run the plan's Final Checks and record the result in `workers-status.md`.
-5. Report to `orchestrator`: status per task, files, checks, blockers, and link to `workers-status.md`.
+1. Read the plan's tasks. Use the status artifact path specified in `Status Artifact Path` by `orchestrator` (fallback to `<artifact-dir>\workers-status.md` if not provided). Ensure all tasks are listed as `⏳ PENDING`.
+2. Run tasks with `Depends on: none` in parallel (max 4 at once); run a dependent task only after all its dependencies are `DONE`. In the same turn you launch background `run_command` tasks, update the status artifact to mark those tasks `🔄 RUNNING`.
+3. When a task finishes, parse its worker result, inspect changed files, and update the status artifact (`✅ DONE`, `🚫 BLOCKED`, or `❌ FAILED`). Stop at any failed or blocked prerequisite.
+4. After all tasks, run the plan's Final Checks and record the result in the status artifact.
+5. Report to `orchestrator`: status per task, files, checks, blockers, and link to the status artifact.
    Never run Git or create commits; committing is handled by `orchestrator`.
 
 ## Live status artifact (`workers-status.md`)
 
-Keep `<artifact-dir>\workers-status.md` updated at every stage transition using `write_file` (`Overwrite: true`) with `ArtifactMetadata`:
+Keep the status artifact (path from `Status Artifact Path`, or `<artifact-dir>\workers-status.md`) updated at every stage transition using `write_file` (`Overwrite: true`) with `ArtifactMetadata`:
 
 ```markdown
 # OpenCode Workers Status
