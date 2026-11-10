@@ -5,6 +5,27 @@ set -e
 PROJECT_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATES_DIR="$SCRIPT_DIR/../templates"
+CONTEXT7_FILE=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --context7-file)
+            CONTEXT7_FILE="$2"
+            shift 2
+            ;;
+        --project)
+            PROJECT_ROOT="$(cd "$2" && pwd)"
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+if [ -z "$CONTEXT7_FILE" ] && [ -f "$PROJECT_ROOT/.agents/rules/.context7_cache.json" ]; then
+    CONTEXT7_FILE="$PROJECT_ROOT/.agents/rules/.context7_cache.json"
+fi
 
 echo "=== Scaffolding de Agentes para: $(basename "$PROJECT_ROOT") ==="
 
@@ -17,33 +38,41 @@ STACK_JSON=$("$PYTHON_BIN" "$SCRIPT_DIR/detect_stack.py" "$PROJECT_ROOT")
 FRAMEWORK=$(echo "$STACK_JSON" | "$PYTHON_BIN" -c "import sys,json; print(json.load(sys.stdin).get('framework','unknown'))")
 echo "  Framework detectado: $FRAMEWORK"
 
-# Paso 2: Elegir template
+# Paso 2: Elegir template (o consultar Context7 antes del fallback genérico)
 TEMPLATE_DIR=""
 USE_FRAMEWORK_FALLBACK=""
 case "$FRAMEWORK" in
     dotnet-mvc|aspnet-mvc)
         TEMPLATE_DIR="$TEMPLATES_DIR/dotnet-mvc"
-        echo "  Template: dotnet-mvc"
+        echo "  Template dedicado: dotnet-mvc"
         ;;
     nextjs)
         if echo "$STACK_JSON" | "$PYTHON_BIN" -c "import sys,json; s=json.load(sys.stdin); exit(0 if s.get('orm')=='prisma' else 1)" 2>/dev/null; then
             TEMPLATE_DIR="$TEMPLATES_DIR/nextjs-prisma"
-            echo "  Template: nextjs-prisma"
+            echo "  Template dedicado: nextjs-prisma"
+        elif [ -n "$CONTEXT7_FILE" ] && [ -f "$CONTEXT7_FILE" ]; then
+            USE_FRAMEWORK_FALLBACK="1"
+            echo "  Next.js sin Prisma: aplicando configuración enriquecida con MCP Context7"
         else
-            echo "  Template: nextjs (genérico, sin template específico)"
+            echo "  Next.js sin template dedicado (se recomienda consultar MCP Context7; usando scaffold_rules.py)"
         fi
         ;;
     react-vite|react)
         TEMPLATE_DIR="$TEMPLATES_DIR/react-vite"
-        echo "  Template: react-vite"
-        ;;
-    angular|vue|svelte|astro|solid|nuxt|remix)
-        USE_FRAMEWORK_FALLBACK="1"
-        echo "  Framework sin template dedicado: $FRAMEWORK (fallback generativo)"
+        echo "  Template dedicado: react-vite"
         ;;
     *)
-        TEMPLATE_DIR="$TEMPLATES_DIR/vanilla-ts"
-        echo "  Template: vanilla-ts (genérico)"
+        USE_FRAMEWORK_FALLBACK="1"
+        if [ -n "$CONTEXT7_FILE" ] && [ -f "$CONTEXT7_FILE" ]; then
+            echo "  Framework sin template dedicado ($FRAMEWORK): usando datos de MCP Context7 ($CONTEXT7_FILE)"
+        else
+            echo "  WARN: Framework '$FRAMEWORK' no tiene template dedicado y aún no hay datos de MCP Context7."
+            echo "        El agente debe consultar MCP Context7 (resolve-library-id + query-docs) antes de usar el genérico."
+            if [ "$FRAMEWORK" = "unknown" ]; then
+                TEMPLATE_DIR="$TEMPLATES_DIR/vanilla-ts"
+                echo "        Aplicando fallback genérico temporal: vanilla-ts"
+            fi
+        fi
         ;;
 esac
 
@@ -53,8 +82,13 @@ echo "$STACK_JSON" | "$PYTHON_BIN" "$SCRIPT_DIR/generate_config.py" "$PROJECT_RO
 
 echo "[3/4] Generando coding-rules.json y DESIGN.md..."
 if [ -n "$USE_FRAMEWORK_FALLBACK" ]; then
-    echo "  Generando reglas específicas de $FRAMEWORK..."
-    echo "$STACK_JSON" | "$PYTHON_BIN" "$SCRIPT_DIR/generate_framework_rules.py" "$PROJECT_ROOT"
+    if [ -n "$CONTEXT7_FILE" ] && [ -f "$CONTEXT7_FILE" ]; then
+        echo "  Generando reglas de $FRAMEWORK con MCP Context7..."
+        echo "$STACK_JSON" | "$PYTHON_BIN" "$SCRIPT_DIR/generate_framework_rules.py" "$PROJECT_ROOT" --context7-file "$CONTEXT7_FILE"
+    else
+        echo "  Generando reglas de $FRAMEWORK (fallback)..."
+        echo "$STACK_JSON" | "$PYTHON_BIN" "$SCRIPT_DIR/generate_framework_rules.py" "$PROJECT_ROOT"
+    fi
 else
     echo "$STACK_JSON" | "$PYTHON_BIN" "$SCRIPT_DIR/scaffold_rules.py" "$PROJECT_ROOT"
 fi

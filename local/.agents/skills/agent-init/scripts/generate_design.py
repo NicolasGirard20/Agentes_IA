@@ -7,6 +7,32 @@ import sys
 from pathlib import Path
 
 
+def _format_context7_section(c7_data):
+    """Formatea la seccion de convenciones obtenidas desde MCP Context7."""
+    if not isinstance(c7_data, dict) or not c7_data:
+        return ""
+
+    libs = c7_data.get("libraries") or ([c7_data["library_id"]] if c7_data.get("library_id") else [])
+    conventions = c7_data.get("conventions") or []
+    summary = c7_data.get("summary") or ""
+    arch = c7_data.get("architecture") or {}
+    nom = c7_data.get("nomenclature") or {}
+
+    lines = ["\n## Convenciones oficiales del stack (MCP Context7)\n"]
+    if libs:
+        lines.append(f"- Librerias consultadas en Context7: `{', '.join(str(x) for x in libs)}`")
+    if summary:
+        lines.append(f"- Resumen: {summary}")
+    for k, v in arch.items():
+        lines.append(f"- Arquitectura (`{k}`): `{v}`")
+    for k, v in nom.items():
+        lines.append(f"- Nomenclatura (`{k}`): `{v}`")
+    for item in conventions:
+        lines.append(f"- {item}")
+
+    return "\n".join(lines) + "\n"
+
+
 def generate_design(stack, project_root):
     project_name = stack.get("project_name", os.path.basename(project_root))
     framework = stack.get("framework", "unknown")
@@ -15,6 +41,16 @@ def generate_design(stack, project_root):
     ui_library = stack.get("ui_library") or "no detectada"
     orm = stack.get("orm") or "ninguno detectado"
     auth = stack.get("auth") or "no detectada"
+    c7_data = stack.get("context7")
+    if not c7_data:
+        c7_cache = os.path.join(project_root, ".agents", "rules", ".context7_cache.json")
+        if os.path.exists(c7_cache):
+            try:
+                with open(c7_cache, "r", encoding="utf-8") as f:
+                    c7_data = json.load(f)
+            except Exception:
+                c7_data = None
+    c7_section = _format_context7_section(c7_data)
 
     return f"""# {project_name} - Diseno y arquitectura
 
@@ -28,7 +64,7 @@ def generate_design(stack, project_root):
 - Libreria UI: {ui_library}
 - ORM: {orm}
 - Autenticacion: {auth}
-
+{c7_section}
 ## Arquitectura
 
 - Respeta la estructura de carpetas existente y confirma cualquier cambio estructural en el codigo y los tests.

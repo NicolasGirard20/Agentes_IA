@@ -218,7 +218,54 @@ FRAMEWORK_RULES = {
 }
 
 
-def generate_framework_rules(stack, project_root):
+def _load_context7_data(project_root, stack, explicit_path=None):
+    """Carga datos obtenidos desde el MCP Context7 si están disponibles."""
+    if isinstance(stack.get("context7"), dict) and stack["context7"]:
+        return stack["context7"]
+
+    candidates = []
+    if explicit_path:
+        candidates.append(explicit_path)
+    candidates.append(os.path.join(project_root, ".agents", "rules", ".context7_cache.json"))
+
+    for path in candidates:
+        if path and os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict) and data:
+                    return data
+            except Exception:
+                pass
+    return None
+
+
+def _apply_context7_overlay(rules, framework, c7_data):
+    """Aplica las reglas y convenciones consultadas en MCP Context7 sobre las reglas base."""
+    rules["source"] = "context7"
+    if "libraries" in c7_data and isinstance(c7_data["libraries"], list):
+        rules["context7_libraries"] = c7_data["libraries"]
+    elif "library_id" in c7_data:
+        rules["context7_libraries"] = [c7_data["library_id"]]
+
+    for section in ("nomenclature", "architecture", "styling", "security", "code_quality"):
+        if isinstance(c7_data.get(section), dict):
+            rules.setdefault(section, {}).update(c7_data[section])
+
+    fw_key = c7_data.get("framework_key") or (framework if framework != "unknown" else None)
+    if fw_key and isinstance(c7_data.get("framework_rules"), dict):
+        rules.setdefault(fw_key, {}).update(c7_data["framework_rules"])
+    elif fw_key and isinstance(c7_data.get(fw_key), dict):
+        rules.setdefault(fw_key, {}).update(c7_data[fw_key])
+
+    if isinstance(c7_data.get("conventions"), list) and c7_data["conventions"]:
+        rules["architecture"]["context7_conventions"] = c7_data["conventions"]
+
+    rules["architecture"].pop("generic_fallback", None)
+    return rules
+
+
+def generate_framework_rules(stack, project_root, context7_data=None):
     framework = stack.get("framework", "unknown")
     rules = _base_rules(stack, project_root)
 
@@ -226,31 +273,48 @@ def generate_framework_rules(stack, project_root):
         fw = FRAMEWORK_RULES[framework]
         rules["nomenclature"].update(fw.get("nomenclature", {}))
         rules["architecture"].update(fw.get("architecture", {}))
-        rules[framework] = fw.get(framework, {})
+        rules[framework] = dict(fw.get(framework, {}))
+        rules["source"] = "framework_fallback"
     else:
         rules["nomenclature"].setdefault("components", "PascalCase.tsx")
         rules["nomenclature"].setdefault("services", "camelCase.ts")
         rules["architecture"]["generic_fallback"] = True
+        rules["source"] = "generic_fallback"
+
+    if context7_data:
+        rules = _apply_context7_overlay(rules, framework, context7_data)
 
     return rules
 
 
 if __name__ == "__main__":
-    project_root = sys.argv[1] if len(sys.argv) > 1 else "."
+    import argparse
+    import subprocess
+
+    parser = argparse.ArgumentParser(description="Genera coding-rules.json y DESIGN.md (con soporte MCP Context7)")
+    parser.add_argument("project_root", nargs="?", default=".", help="Ruta raíz del proyecto")
+    parser.add_argument("--context7-file", dest="context7_file", default=None, help="JSON con reglas obtenidas de MCP Context7")
+    args = parser.parse_args()
+
+    project_root = args.project_root
     stack_input = sys.stdin.read() if not sys.stdin.isatty() else "{}"
     stack = json.loads(stack_input) if stack_input.strip() else {}
 
-    rules = generate_framework_rules(stack, project_root)
+    c7_data = _load_context7_data(project_root, stack, args.context7_file)
+    if c7_data:
+        stack["context7"] = c7_data
+
+    rules = generate_framework_rules(stack, project_root, context7_data=c7_data)
 
     rules_dir = os.path.join(project_root, ".agents", "rules")
     os.makedirs(rules_dir, exist_ok=True)
 
     with open(os.path.join(rules_dir, "coding-rules.json"), "w", encoding="utf-8") as f:
         json.dump(rules, f, indent=2, ensure_ascii=False)
-    print("coding-rules.json generado (fallback por framework)")
+    origin_label = "MCP Context7" if c7_data else f"fallback ({rules.get('source', 'generic')})"
+    print(f"coding-rules.json generado ({origin_label})")
 
     design_script = os.path.join(os.path.dirname(__file__), "generate_design.py")
-    import subprocess
     subprocess.run(
         [sys.executable, design_script, project_root],
         input=json.dumps(stack),
