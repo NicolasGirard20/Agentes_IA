@@ -150,7 +150,7 @@ CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 NON_ALNUM = re.compile(r"[^\w]+")
 
 VERBOSE = False
-DEBUG_FIELDS = {"dense", "lexical", "boost", "matched_tokens", "matched_symbols", "imports", "exports"}
+DEBUG_FIELDS = {"dense", "lexical", "boost", "rrf", "matched_tokens", "matched_symbols", "imports", "exports"}
 
 
 def info(msg: str) -> None:
@@ -436,6 +436,7 @@ class ProjectMapEngine:
         self.project_name = self.data.get("project_name", "proyecto")
         self.collection_name = collection or f"pm_{_safe_slug(self.project_name)}"
         self.custom_synonyms = self.data.get("metadata", {}).get("synonyms", {})
+        self._idf: dict[str, float] | None = None
 
     def _load_data(self, path_str: str) -> dict:
         p = Path(path_str)
@@ -451,21 +452,9 @@ class ProjectMapEngine:
         cache_dir.mkdir(parents=True, exist_ok=True)
         return cache_dir / f"state_{self.collection_name}.json"
 
-    def index(self, force: bool = False, skip_junk: bool = True) -> None:
-        file_hash = _get_file_hash(self.map_path)
-        state_file = self._state_file_path()
-        state = {}
-        if state_file.exists():
-            try:
-                state = json.loads(state_file.read_text(encoding="utf-8"))
-            except Exception:
-                pass
-
-        collection_exists = self.client.collection_exists(self.collection_name)
-        if not force and collection_exists and state.get("map_hash") == file_hash and state.get("model") == self.embed_model:
-            info(f"Colección '{self.collection_name}' al día (sin cambios en {self.map_path}).")
-            return
-
+    def _build_selected_and_fields(
+        self, skip_junk: bool = True
+    ) -> tuple[list[dict], dict[str, list[str]], list[dict[str, list[str]]]]:
         files = self.data.get("files", [])
         dep_graph = self.data.get("dependency_graph", {}) or {}
         dependents_map: dict[str, list[str]] = {}
@@ -481,6 +470,39 @@ class ProjectMapEngine:
             selected.append(entry)
 
         selected.extend(build_meta_docs(self.data))
+
+        fields_list = []
+        for entry in selected:
+            path = entry.get("path", "")
+            deps = sorted(dependents_map.get(path, []))
+            fields_list.append({
+                "path": tokenize(path),
+                "symbols": tokenize(" ".join(extract_symbols(entry))),
+                "summary": tokenize(entry.get("summary", "")),
+                "imports": tokenize(" ".join(entry.get("imports", []))),
+                "dependents": tokenize(" ".join(deps)),
+            })
+        return selected, dependents_map, fields_list
+
+    def index(self, force: bool = False, skip_junk: bool = True) -> None:
+        file_hash = _get_file_hash(self.map_path)
+        state_file = self._state_file_path()
+        state = {}
+        if state_file.exists():
+            try:
+                state = json.loads(state_file.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
+        collection_exists = self.client.collection_exists(self.collection_name)
+        if not force and collection_exists and state.get("map_hash") == file_hash and state.get("model") == self.embed_model:
+            cached_idf = state.get("idf")
+            if isinstance(cached_idf, dict) and cached_idf:
+                self._idf = cached_idf
+            info(f"Colección '{self.collection_name}' al día (sin cambios en {self.map_path}).")
+            return
+
+        selected, dependents_map, fields_list = self._build_selected_and_fields(skip_junk=skip_junk)
         if not selected:
             print("No hay documentos para indexar.", file=sys.stderr)
             return
@@ -491,22 +513,14 @@ class ProjectMapEngine:
             file=sys.stderr,
         )
 
-        texts = []
-        fields_list = []
-        for entry in selected:
-            path = entry.get("path", "")
-            deps = sorted(dependents_map.get(path, []))
-            texts.append(flatten_file_entry(entry, deps))
-            fields_list.append({
-                "path": tokenize(path),
-                "symbols": tokenize(" ".join(extract_symbols(entry))),
-                "summary": tokenize(entry.get("summary", "")),
-                "imports": tokenize(" ".join(entry.get("imports", []))),
-                "dependents": tokenize(" ".join(deps)),
-            })
+        texts = [
+            flatten_file_entry(entry, sorted(dependents_map.get(entry.get("path", ""), [])))
+            for entry in selected
+        ]
 
         all_doc_tokens = [sorted(set(sum(f.values(), []))) for f in fields_list]
         idf = compute_idf(all_doc_tokens)
+        self._idf = idf
 
         vectors = embed_texts(texts, model=self.embed_model, api_key=self.api_key, batch_size=self.embed_batch)
         dim = int(len(vectors[0]))
@@ -557,20 +571,40 @@ class ProjectMapEngine:
                 "model": self.embed_model,
                 "project": self.project_name,
                 "points": len(points),
+                "idf": idf,
             }, indent=2),
             encoding="utf-8",
         )
         print(f"Indexación completada: {len(points)} puntos guardados en '{self.collection_name}'.", file=sys.stderr)
 
     def _query_idf(self) -> dict[str, float]:
-        docs = []
-        for entry in self.data.get("files", []):
-            path = entry.get("path", "")
-            if is_junk_path(path, self.extra_skip_prefixes):
-                continue
-            text = f"{path} {entry.get('summary', '')} {' '.join(extract_symbols(entry))}"
-            docs.append(tokenize(text))
-        return compute_idf(docs)
+        if self._idf is not None:
+            return self._idf
+
+        state_file = self._state_file_path()
+        state = {}
+        if state_file.exists():
+            try:
+                state = json.loads(state_file.read_text(encoding="utf-8"))
+                cached_idf = state.get("idf")
+                if isinstance(cached_idf, dict) and cached_idf and state.get("map_hash") == _get_file_hash(self.map_path):
+                    self._idf = cached_idf
+                    return self._idf
+            except Exception:
+                pass
+
+        _, _, fields_list = self._build_selected_and_fields(skip_junk=True)
+        all_doc_tokens = [sorted(set(sum(f.values(), []))) for f in fields_list]
+        self._idf = compute_idf(all_doc_tokens)
+
+        if state_file.exists() and isinstance(state, dict) and state:
+            try:
+                state["idf"] = self._idf
+                state_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
+            except Exception:
+                pass
+
+        return self._idf
 
     def search(
         self,
@@ -589,6 +623,7 @@ class ProjectMapEngine:
             self.index(force=True)
 
         primary_tokens = tokenize(query, stems=False)
+        primary_lower = {t.lower() for t in primary_tokens}
         primary_set = set(primary_tokens) | {_stem(t) for t in primary_tokens}
         query_tokens = expand_query_tokens(tokenize(query), self.custom_synonyms)
 
@@ -617,10 +652,12 @@ class ProjectMapEngine:
             cosine = float(np.dot(dense_vec, query_dense))
             dense_norm = max(0.0, min(1.0, (cosine - DENSE_FLOOR) / (1.0 - DENSE_FLOOR)))
 
-            # Puntuación léxica
-            doc_symbols = tokenize(" ".join(payload.get("functions", []) + payload.get("classes", []) + payload.get("exports", [])))
-            doc_path = tokenize(payload.get("file", ""))
-            doc_summary = tokenize(payload.get("summary", ""))
+            # Puntuación léxica (incluye symbols, path, summary, imports y dependents)
+            doc_symbols = set(tokenize(" ".join(payload.get("functions", []) + payload.get("classes", []) + payload.get("exports", []))))
+            doc_path = set(tokenize(payload.get("file", "")))
+            doc_summary = set(tokenize(payload.get("summary", "")))
+            doc_imports = set(tokenize(" ".join(payload.get("imports", []))))
+            doc_dependents = set(tokenize(" ".join(payload.get("dependents", []))))
 
             lex_score = 0.0
             matched = []
@@ -635,21 +672,33 @@ class ProjectMapEngine:
                 elif tok in doc_summary:
                     lex_score += 1.5 * w
                     matched.append(tok)
+                elif tok in doc_imports or tok in doc_dependents:
+                    lex_score += 1.0 * w
+                    matched.append(tok)
 
             lex_norm = min(1.0, lex_score / (max(1, len(primary_tokens)) * 3.5))
 
-            # Boost exacto para nombres de archivos y símbolos
+            # Boost exacto para nombres de archivos y símbolos (funciones, clases y exports)
             boost = 0.0
             boost_hits = []
             file_name = Path(payload.get("file", "")).stem.lower()
-            if any(t.lower() == file_name for t in primary_tokens):
+            if file_name and file_name in primary_lower:
                 boost = 0.8
                 boost_hits.append(f"archivo {file_name}")
             else:
-                for fn in payload.get("functions", []):
-                    if isinstance(fn, str) and any(t.lower() == fn.lower() for t in primary_tokens):
+                symbol_groups = (
+                    ("función", payload.get("functions", [])),
+                    ("clase", payload.get("classes", [])),
+                    ("export", payload.get("exports", [])),
+                )
+                for label, items in symbol_groups:
+                    hit = next(
+                        (s for s in items if isinstance(s, str) and s.lower() in primary_lower),
+                        None,
+                    )
+                    if hit is not None:
                         boost = max(boost, 0.7)
-                        boost_hits.append(f"función {fn}")
+                        boost_hits.append(f"{label} {hit}")
                         break
 
             final = W_DENSE * dense_norm + W_LEXICAL * lex_norm + W_BOOST * boost
@@ -659,6 +708,7 @@ class ProjectMapEngine:
                 "dense": round(cosine, 4),
                 "lexical": round(lex_norm, 4),
                 "boost": round(boost, 4),
+                "rrf": round(float(pt.score or 0.0), 4),
                 "summary": payload.get("summary", ""),
                 "language": payload.get("language", ""),
                 "functions": payload.get("functions", []),
@@ -670,7 +720,7 @@ class ProjectMapEngine:
                 "matched_symbols": boost_hits,
             })
 
-        results.sort(key=lambda r: (r["score"], r["dense"]), reverse=True)
+        results.sort(key=lambda r: (r["score"], r["rrf"], r["dense"]), reverse=True)
         if not include_meta:
             results = [r for r in results if r["language"] != "meta"]
         results = [r for r in results if r["score"] >= min_score]

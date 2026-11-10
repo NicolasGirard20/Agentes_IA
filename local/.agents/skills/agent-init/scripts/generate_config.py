@@ -22,20 +22,18 @@ def generate_config(stack, project_root):
             "coding_rules": ".agents/rules/coding-rules.json"
         },
         "skills": {
-            "project-mapper": {
+            "project-mapper-simple": {
                 "type": "local",
-                "path": ".agents/skills/project-mapper",
+                "path": ".agents/skills/project-mapper-simple",
                 "auto_trigger": {
                     "on_session_start": True,
                     "map_ttl_hours": 2,
                     "force_regenerate_if_missing": True
                 },
                 "scripts": {
-                    "generate": ".agents/skills/project-mapper/scripts/generate_map.py",
-                    "inject": ".agents/skills/project-mapper/scripts/inject_relevant.py",
-                    "compress": ".agents/skills/project-mapper/scripts/compress_context.py"
+                    "generate": ".agents/skills/project-mapper-simple/scripts/generate_map.py"
                 },
-                "output": ".agents/skills/project-mapper/resources"
+                "output": ".agents/skills/project-mapper-simple/resources"
             },
             "prompt-toolkit": {
                 "type": "local",

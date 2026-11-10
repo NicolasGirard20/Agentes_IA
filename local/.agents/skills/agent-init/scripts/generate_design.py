@@ -51,7 +51,7 @@ def generate_design(stack, project_root):
 
 ## Evidencia pendiente de validar
 
-- Revisar la estructura real del proyecto con project-mapper antes de tomar decisiones concretas.
+- Revisar la estructura real del proyecto con project-mapper-simple antes de tomar decisiones concretas.
 - Reemplazar las reglas genericas por convenciones observadas en codigo, configuracion y tests.
 """
 

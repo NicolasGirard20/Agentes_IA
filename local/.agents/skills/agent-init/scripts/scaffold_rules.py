@@ -189,7 +189,7 @@ El sistema está desarrollado sobre **ASP.NET MVC (.NET Framework 4.8)** utiliza
 | `.agents/init.ps1` / `init.sh` | Inicialización y verificación de estado |
 | `.agents/rules/DESIGN.md` | Guía de diseño visual y patrones de componentes |
 | `.agents/rules/FRONTEND_ENCODING.md` | Regla obligatoria de UTF-8 con BOM |
-| `.agents/skills/project-mapper/` | Mapeo estructurado y filtrado de contexto |
+| `.agents/skills/project-mapper-simple/` | Mapeo estructurado y filtrado de contexto |
 """
 
     md = f"""# {project_name} — Reglas de Diseño y Arquitectura
@@ -207,7 +207,7 @@ Este proyecto cuenta con un sistema de configuración para agentes de IA. Los si
 | `.opencode/config.json` | Configuración técnica del agente: skills, triggers, rutas de scripts |
 | `.agents/init.sh` | Script de bootstrap que se ejecuta al iniciar cada sesión (genera mapa del proyecto, verifica dependencias) |
 | `.agents/rules/coding-rules.json` | Reglas de estilo y arquitectura en formato estructurado para validación automática de prompts |
-| `.agents/skills/project-mapper/` | Skill local que mapea la estructura completa del proyecto y filtra contexto relevante |
+| `.agents/skills/project-mapper-simple/` | Skill local que mapea la estructura completa del proyecto y filtra contexto relevante |
 | `.agents/skills/prompt-toolkit/` | Skill local con templates de prompts parametrizables y validador de seguridad |
 
 ### Flujo de inicio de sesión

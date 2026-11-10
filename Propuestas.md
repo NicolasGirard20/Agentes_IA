@@ -30,3 +30,6 @@
 - [x] *figma-mcp**: conectarse a plantillas de figma
      *Consideración*: hay que renovar la api
 - [x] *ui-skills**: decenas de skills de diseño y otros temas disponibles de manera remota*.
+- [x] *context7**: documentación de herramientas, frameworks*.
+- [ ] *github**: seguimiento de repos y demás
+    - *Consideración**: se necesita apikey

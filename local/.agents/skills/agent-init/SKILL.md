@@ -44,15 +44,43 @@ Si el framework detectado **no tiene template dedicado** (Angular, Vue, Svelte, 
 - `.agents/rules/DESIGN.md` → Documento unificado de negocio, arquitectura, diseño y convenciones
 
 ### Paso 4: Generar mapa inicial
-Ejecuta `project-mapper` para generar el primer mapa del proyecto.
+Ejecuta `project-mapper-simple` (`scripts/generate_map.py`) para generar el primer mapa del proyecto.
+Esta skill NO genera `PRODUCT_REQUIREMENTS.md`.
+
+### Paso 5: Agregar carpeta local del agente al gitignore
+Agrega .agents/ al gitignore en el proyecto local
 
 ## Salida esperada
 ```
 .opencode/config.json
 .agents/rules/coding-rules.json
 .agents/rules/DESIGN.md
-.agents/skills/project-mapper/resources/project_map.json
+.agents/skills/project-mapper-simple/resources/project_map.json
+AGENTS.md   (indicaciones para actualizar .agents; ver "AGENTS.md y hallazgos")
 ```
+
+## AGENTS.md y hallazgos
+
+Cuando el agente detecte, con evidencia real (sin suponer ni inventar):
+- **repetitive**: una tarea o corrección que se repite.
+- **error**: un error descubierto sobre la app.
+- **design**: una referencia de diseño nueva o modificada.
+
+Debe registrarlo desde el proyecto con:
+
+```bash
+python3 .agents/skills/agent-init/scripts/update_agents_md.py \
+  --project . --category <repetitive|error|design> --text "<indicación>" \
+  [--rule-key <clave.con.puntos> --rule-value '<JSON>']
+```
+
+- Crea/actualiza `AGENTS.md` en la raíz como **punto de referencia hacia `.agents/`**: solo indicaciones de cómo actualizar `.agents/` (tabla de qué corregir y dónde + comando). No describe el proyecto ni lista skills/rules. Solo reescribe el bloque `<!-- agent-init:start --> ... <!-- agent-init:end -->`; el resto se conserva.
+- El hallazgo se guarda en `.agents/rules/LEARNINGS.md` (no en AGENTS.md), y luego se resincroniza el índice.
+- Con `--rule-key/--rule-value` actualiza `.agents/rules/coding-rules.json`.
+- Con `category=design` agrega además la nota en `.agents/rules/DESIGN.md` (sección "Cambios de diseño registrados").
+- `--sync` regenera solo el bloque de AGENTS.md.
+- Los agentes deben leer `AGENTS.md` para saber qué corregir dentro de `.agents`.
+- Si hay duda sobre qué registrar o en qué regla, preguntar al usuario antes de escribir.
 
 ## Validación
 - Verificar que los JSON generados sean válidos.

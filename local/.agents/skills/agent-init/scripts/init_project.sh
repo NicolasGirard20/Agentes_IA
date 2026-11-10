@@ -51,15 +51,13 @@ esac
 echo "[2/4] Generando .opencode/config.json..."
 echo "$STACK_JSON" | "$PYTHON_BIN" "$SCRIPT_DIR/generate_config.py" "$PROJECT_ROOT"
 
-echo "[3/4] Generando coding-rules.json, DESIGN.md y PRODUCT_REQUIREMENTS.md..."
+echo "[3/4] Generando coding-rules.json y DESIGN.md..."
 if [ -n "$USE_FRAMEWORK_FALLBACK" ]; then
     echo "  Generando reglas específicas de $FRAMEWORK..."
     echo "$STACK_JSON" | "$PYTHON_BIN" "$SCRIPT_DIR/generate_framework_rules.py" "$PROJECT_ROOT"
 else
     echo "$STACK_JSON" | "$PYTHON_BIN" "$SCRIPT_DIR/scaffold_rules.py" "$PROJECT_ROOT"
 fi
-
-"$PYTHON_BIN" "$SCRIPT_DIR/generate_requirements.py" "$PROJECT_ROOT"
 
 # Si existe template, copiar y reemplazar placeholders
 if [ -n "$TEMPLATE_DIR" ] && [ -d "$TEMPLATE_DIR" ]; then
@@ -82,17 +80,20 @@ if [ -n "$TEMPLATE_DIR" ] && [ -d "$TEMPLATE_DIR" ]; then
     done
 fi
 
-# Paso 4: Ejecutar project-mapper por primera vez
+# Paso 4: Ejecutar project-mapper-simple por primera vez
 echo "[4/4] Generando mapa inicial del proyecto..."
-if [ -f "$PROJECT_ROOT/.agents/skills/project-mapper/scripts/generate_map.py" ]; then
-    "$PYTHON_BIN" "$PROJECT_ROOT/.agents/skills/project-mapper/scripts/generate_map.py" \
+if [ -f "$PROJECT_ROOT/.agents/skills/project-mapper-simple/scripts/generate_map.py" ]; then
+    "$PYTHON_BIN" "$PROJECT_ROOT/.agents/skills/project-mapper-simple/scripts/generate_map.py" \
         --project "$PROJECT_ROOT" \
-        --output "$PROJECT_ROOT/.agents/skills/project-mapper/resources/project_map.json" \
+        --output "$PROJECT_ROOT/.agents/skills/project-mapper-simple/resources/project_map.json" \
         --force
     echo "  Mapa generado"
 else
-    echo "  WARN: project-mapper no encontrado, saltando"
+    echo "  WARN: project-mapper-simple no encontrado, saltando"
 fi
+
+# Generar AGENTS.md (punto de referencia hacia .agents)
+"$PYTHON_BIN" "$SCRIPT_DIR/update_agents_md.py" --project "$PROJECT_ROOT" --sync
 
 # Hacer ejecutable init.sh
 if [ -f "$PROJECT_ROOT/.agents/init.sh" ]; then
@@ -104,7 +105,7 @@ echo "=== Scaffolding completado para: $(basename "$PROJECT_ROOT") ==="
 echo "  .opencode/config.json      → Configuración técnica"
 echo "  .agents/rules/coding-rules.json → Reglas estructuradas"
 echo "  .agents/rules/DESIGN.md    → Diseño y arquitectura"
-echo "  PRODUCT_REQUIREMENTS.md    → Requisitos funcionales y reglas de negocio"
-echo "  .agents/skills/            → Skills locales (project-mapper, prompt-toolkit, agent-init)"
+echo "  AGENTS.md                  → Índice de referencia hacia .agents"
+echo "  .agents/skills/            → Skills locales (project-mapper-simple, prompt-toolkit, agent-init)"
 echo ""
 echo "Personaliza .agents/rules/DESIGN.md con las reglas específicas de tu proyecto."

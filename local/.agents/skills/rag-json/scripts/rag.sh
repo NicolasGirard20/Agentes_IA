@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Wrapper de rag-json: valida mapa y Qdrant (rápido), luego prepara venv/dependencias y ejecuta la búsqueda.
+# Wrapper de rag-json: valida mapa, API key y Qdrant (rápido), luego prepara venv/dependencias y ejecuta la búsqueda.
 # Uso: rag.sh [opciones del script] "consulta"
-# Exit codes: 10 = Qdrant no responde (preguntar al usuario), 11 = project_map.json no encontrado, 1 = fallo de entorno.
+# Exit codes: 2 = falta OPENROUTER_API_KEY, 10 = Qdrant no responde (preguntar al usuario), 11 = project_map.json no encontrado, 1 = fallo de entorno.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,13 +11,19 @@ PROJECT_ROOT="$(cd "$SKILL_DIR/../../.." && pwd)"
 VENV="$SKILL_DIR/.venv"
 PY="$VENV/bin/python"
 
-# 1. project_map.json (si no viene --map explícito)
+has_env_key() {
+  local env_file="$1"
+  [ -f "$env_file" ] && grep -Eq '^[[:space:]]*(export[[:space:]]+)?OPENROUTER_API_KEY[[:space:]]*=[[:space:]]*["'\'']?[^"'\''#[:space:]]+' "$env_file"
+}
+
+# 1. project_map.json y flags (si no viene --map explícito)
 ARGS=("$@")
-HAS_MAP=0; HAS_FORMAT=0
+HAS_MAP=0; HAS_FORMAT=0; HAS_API_KEY=0
 for a in "${ARGS[@]}"; do
   case "$a" in
     --map|--map=*) HAS_MAP=1 ;;
     --json|--rag) HAS_FORMAT=1 ;;
+    --api-key|--api-key=*) HAS_API_KEY=1 ;;
   esac
 done
 
@@ -30,7 +36,15 @@ if [ "$HAS_MAP" -eq 0 ]; then
   ARGS=(--map "$MAP" "${ARGS[@]}")
 fi
 
-# 2. Qdrant activo
+# 2. OPENROUTER_API_KEY (fail-fast antes de crear/validar venv o contactar Qdrant)
+if [ "$HAS_API_KEY" -eq 0 ] && [ -z "${OPENROUTER_API_KEY:-}" ]; then
+  if ! has_env_key "$PROJECT_ROOT/.env" && ! has_env_key "$SCRIPT_DIR/.env"; then
+    echo "ERROR: Falta OPENROUTER_API_KEY. Definila en $PROJECT_ROOT/.env (o exportala / --api-key)." >&2
+    exit 2
+  fi
+fi
+
+# 3. Qdrant activo
 QDRANT_URL="${QDRANT_URL:-http://localhost:6333}"
 if ! curl -s -f -m 3 "$QDRANT_URL/healthz" >/dev/null 2>&1; then
   echo "QDRANT_DOWN: sin respuesta en $QDRANT_URL. Preguntar al usuario si activa el contenedor (docker start qdrant-local || docker run -d --name qdrant-local -p 6333:6333 -p 6334:6334 qdrant/qdrant)." >&2
