@@ -5,7 +5,7 @@ tools:
   - run_command
   - view_file
   - grep_search
-mainAgent: false
+mainAgent: true
 subagent: true
 model: flash
 commandExecutionPolicy: sandbox

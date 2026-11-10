@@ -51,9 +51,14 @@ def find_project_root() -> Path:
 PROJECT_ROOT = find_project_root()
 DEFAULT_MAP_PATH = str(PROJECT_ROOT / ".agents" / "skills" / "project-mapper" / "resources" / "project_map.json")
 
-# Prioridad: variable ya exportada > .env de la raíz del proyecto > scripts/.env
-load_dotenv(PROJECT_ROOT / ".env")
-load_dotenv()
+# Prioridad: variable ya exportada > .env de la raíz (ruta lógica y real) > scripts/.env > ~/.gemini/.env
+_REAL_ROOT = Path(__file__).resolve().parent
+for _p in _REAL_ROOT.parents:
+    if _p.name == ".agents":
+        _REAL_ROOT = _p.parent
+        break
+for _env in (PROJECT_ROOT / ".env", _REAL_ROOT / ".env", Path(__file__).with_name(".env"), Path.home() / ".gemini" / ".env"):
+    load_dotenv(_env)
 
 # Configuraciones por defecto
 OPENROUTER_EMBED_URL = "https://openrouter.ai/api/v1/embeddings"

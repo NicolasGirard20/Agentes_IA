@@ -38,8 +38,14 @@ fi
 
 # 2. OPENROUTER_API_KEY (fail-fast antes de crear/validar venv o contactar Qdrant)
 if [ "$HAS_API_KEY" -eq 0 ] && [ -z "${OPENROUTER_API_KEY:-}" ]; then
-  if ! has_env_key "$PROJECT_ROOT/.env" && ! has_env_key "$SCRIPT_DIR/.env"; then
-    echo "ERROR: Falta OPENROUTER_API_KEY. Definila en $PROJECT_ROOT/.env (o exportala / --api-key)." >&2
+  REAL_SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+  REAL_ROOT="$(cd "$REAL_SCRIPT_DIR/../../../.." 2>/dev/null && pwd)"
+  FOUND=0
+  for f in "$PROJECT_ROOT/.env" "$REAL_ROOT/.env" "$SCRIPT_DIR/.env" "$HOME/.gemini/.env"; do
+    has_env_key "$f" && FOUND=1 && break
+  done
+  if [ "$FOUND" -eq 0 ]; then
+    echo "ERROR: Falta OPENROUTER_API_KEY. Definila en $PROJECT_ROOT/.env, $SCRIPT_DIR/.env o ~/.gemini/.env (o exportala / --api-key)." >&2
     exit 2
   fi
 fi
