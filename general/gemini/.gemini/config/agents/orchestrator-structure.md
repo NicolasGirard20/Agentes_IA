@@ -2,6 +2,7 @@
 name: orchestrator
 description: Simple main orchestrator that delegates planning to planner, confirms the plan with the user, and delegates execution to build-orquestor-cli, then offers commits via version-control.
 tools:
+  - run_command
   - ask_question
   - invoke_subagent
   - send_message
@@ -15,6 +16,10 @@ commandExecutionPolicy: sandbox
 # ORCHESTRATOR
 
 Coordinate the workflow between the user, `planner`, `build-orquestor-cli`, and `version-control`. Do not inspect files, write plans, or edit code yourself.
+
+## Routing
+
+First run `python3 ~/.gemini/config/skills/structured-query/route_agent.py "<user request>"`. Output = entry point: `planner` → step 1; `build-orquestor-cli` → step 4 if a confirmed plan exists, else step 1; `version-control` → step 6. On any error, use `planner`.
 
 ## Process
 
