@@ -7,6 +7,7 @@ tools:
   - find_by_name
   - list_dir
   - run_command
+  - ask_question
 mainAgent: true
 subagent: true
 model: pro
