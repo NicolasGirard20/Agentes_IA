@@ -1,11 +1,8 @@
 # Propuestas
 
-## Pendientes
-
-### Recomendaciones de skills
+## Recomendaciones de skills
 - [ ] **Validador de prompts**: Reglas y sanitizadores (longitud, incoherencias, instrucciones peligrosas) que alerten antes de enviar.
 - [ ] **Auto-refinador (iterative refinement)**: Genera y compara variantes de prompt, elige la mejor mediante métricas automáticas.
-- [ ] **Banco de ejemplos (few-shot)**: Colección etiquetada de ejemplos por dominio/estilo para inserción dinámica en prompts.
 - [x] **Gestión de contexto y memoria**: Short/long-term memory, retriever vectorial (RAG) para incluir contexto relevante al prompt.
 - [ ] **Composer dinámico de prompts**: Motor que arma prompts condicionales (bloques, bucles, ramificaciones) según meta/rol.
 - [ ] **Evaluador automático**: Tests de calidad de salida (exactitud, coherencia, toxicidad) y dashboard de métricas.
@@ -17,19 +14,19 @@
 - [x] **Ensamble agentico**: Orquestrador de múltiples agentes especializados (explorador, experto, revisor) que cooperan en una tarea.
 - [x] **Agregar skill de terceros**: Ejemplo de github.com/w7panel/w7panel/tree/main/.opencode/skills.
 
-### Plugins opencode
-- [x] *opendesign**: Herramienta de diseño para generar prototipos funcionales, interfaces, páginas web o presentaciones en archivos html.
+## Plugins opencode
+- [x] **opendesign**: Herramienta de diseño para generar prototipos funcionales, interfaces, páginas web o presentaciones en archivos html.
      *Consideración*: Se reemplazó solución por mcp de figma. CONSUME MUCHOS TOKENS
-- [x] **opencode-snip**: Recortar salida de la terminal para evitar ruido que cosume tokens.
+- [x] **opencode-snip**: Recortar salida de la terminal para evitar ruido que consume tokens.
      *Consideración*: Sigue en prueba, tener en cuenta para el ahorro de tokens.
 - [x] **envsitter-guard**: Evita que el agente filtre secretos a las LLMS.
-- [x] *TokenScope**: Análisis detallado del uso de tokens y tracking de costes por sesión.
+- [x] **TokenScope**: Análisis detallado del uso de tokens y tracking de costes por sesión.
      *Consideración*: comando es /tokenscope.
 
-### Model Context Protocol
-- [x] *figma-mcp**: conectarse a plantillas de figma
+## Model Context Protocol
+- [x] **figma-mcp**: Conectarse a plantillas de figma.
      *Consideración*: hay que renovar la api
-- [x] *ui-skills**: decenas de skills de diseño y otros temas disponibles de manera remota*.
-- [x] *context7**: documentación de herramientas, frameworks*.
-- [ ] *github**: seguimiento de repos y demás
-    - *Consideración**: se necesita apikey
+- [x] **ui-skills**: Decenas de skills de diseño y otros temas disponibles de manera remota.
+- [x] **context7**: Documentación de herramientas, frameworks. Login.
+- [ ] **github**: Seguimiento de repos y demás.
+     *Consideración*: se necesita apikey
