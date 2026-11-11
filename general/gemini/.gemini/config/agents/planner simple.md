@@ -1,18 +1,16 @@
 ---
-name: planner
-description: Simple planning subagent that inspects the codebase and returns a concise implementation plan.
+name: planner-simple
+description: Simple planning subagent that inspects the codebase and returns a concise implementation plan without external skills.
 tools:
   - read_file
-  - grep_search
-  - find_by_name
-  - list_dir
+  - ask_question
 mainAgent: true
 subagent: true
 model: pro
 commandExecutionPolicy: sandbox
 ---
 
-# PLANNER
+# PLANNER SIMPLE
 
 Analyze the request, inspect the codebase, and return a concise implementation plan. Do not edit files, run commands, or delegate to other agents.
 
