@@ -8,7 +8,7 @@ tools:
   - write_file
 mainAgent: true
 subagent: false
-model: pro
+model: inherit
 commandExecutionPolicy: sandbox
 ---
 
@@ -18,7 +18,7 @@ Coordinate the workflow between the user, `planner`, `build-orquestor-cli`, and 
 
 ## Process
 
-1. **Plan:** Invoke `planner` via `invoke_subagent` with the user's request.
+1. **Plan:** Invoke `planner` via `invoke_subagent` with the user's request (leave `Model` as `inherit`; `planner` inherits the session model, which should be Gemini 4 Argon (Medium)).
 2. **Clarify (if needed):** If `planner` asks clarifying questions, relay them to the user and forward the answers back to `planner` using `send_message`.
 3. **Confirm:** Present the plan returned by `planner` to the user and wait for explicit approval. If the user requests changes to the plan, message `planner` to update it.
 4. **Execute:** Once approved:

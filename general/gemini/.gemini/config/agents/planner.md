@@ -8,7 +8,7 @@ tools:
   - ask_question
 mainAgent: true
 subagent: true
-model: pro
+model: inherit
 ---
 
 # PLANNER
