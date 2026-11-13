@@ -5,13 +5,6 @@ window.PROPUESTAS = {
       "nombre": "Recomendaciones de skills",
       "items": [
         {
-          "id": "p1",
-          "titulo": "Validador de prompts",
-          "descripcion": "Reglas y sanitizadores (longitud, incoherencias, instrucciones peligrosas) que alerten antes de enviar.",
-          "consideracion": "",
-          "hecho": false
-        },
-        {
           "id": "p2",
           "titulo": "Auto-refinador (iterative refinement)",
           "descripcion": "Genera y compara variantes de prompt, elige la mejor mediante métricas automáticas.",
@@ -24,13 +17,6 @@ window.PROPUESTAS = {
           "descripcion": "Short/long-term memory, retriever vectorial (RAG) para incluir contexto relevante al prompt.",
           "consideracion": "",
           "hecho": true
-        },
-        {
-          "id": "p5",
-          "titulo": "Composer dinámico de prompts",
-          "descripcion": "Motor que arma prompts condicionales (bloques, bucles, ramificaciones) según meta/rol.",
-          "consideracion": "",
-          "hecho": false
         },
         {
           "id": "p6",
@@ -174,6 +160,20 @@ window.PROPUESTAS = {
           "titulo": "Inmovación",
           "descripcion": "Gestión de inmobiliaria GBS",
           "consideracion": "Falta cargar datos reales",
+          "hecho": false
+        },
+        {
+          "id": "mwfc6b8ot8nl",
+          "titulo": "Armar portafolio",
+          "descripcion": "No arranqué todavía",
+          "consideracion": "",
+          "hecho": false
+        },
+        {
+          "id": "mwfc8jt9c9i5",
+          "titulo": "Crear sitio web de gestión de proyectos",
+          "descripcion": "Que se conecte al portafolio",
+          "consideracion": "",
           "hecho": false
         }
       ]
