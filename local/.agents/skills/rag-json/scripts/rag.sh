@@ -6,10 +6,37 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(dirname "$SCRIPT_DIR")"
-# Layout fijo: <raíz>/.agents/skills/rag-json -> la raíz está 3 niveles arriba
-PROJECT_ROOT="$(cd "$SKILL_DIR/../../.." && pwd)"
 VENV="$SKILL_DIR/.venv"
 PY="$VENV/bin/python"
+
+find_project_root() {
+  local dir="$SKILL_DIR"
+  while [ "$dir" != "/" ]; do
+    if [ "$(basename "$dir")" = ".agents" ]; then
+      local parent
+      parent="$(dirname "$dir")"
+      if [ "$parent" != "$HOME" ]; then
+        echo "$parent"
+        return 0
+      fi
+    fi
+    dir="$(dirname "$dir")"
+  done
+
+  # Instalación global: buscar raíz del proyecto desde el directorio actual (.agents o .git)
+  dir="$(pwd)"
+  while [ "$dir" != "/" ]; do
+    if { [ -d "$dir/.agents" ] && [ "$dir" != "$HOME" ]; } || [ -e "$dir/.git" ]; then
+      echo "$dir"
+      return 0
+    fi
+    dir="$(dirname "$dir")"
+  done
+
+  pwd
+}
+
+PROJECT_ROOT="$(find_project_root)"
 
 has_env_key() {
   local env_file="$1"
@@ -28,9 +55,23 @@ for a in "${ARGS[@]}"; do
 done
 
 if [ "$HAS_MAP" -eq 0 ]; then
-  MAP="${RAG_MAP:-$PROJECT_ROOT/.agents/skills/project-mapper/resources/project_map.json}"
-  if [ ! -f "$MAP" ]; then
-    echo "MAP_NOT_FOUND: no existe $MAP (generarlo con project-mapper o usar --map)." >&2
+  MAP=""
+  if [ -n "${RAG_MAP:-}" ]; then
+    MAP="$RAG_MAP"
+  else
+    for candidate in \
+      "$PROJECT_ROOT/.agents/skills/project-mapper/resources/project_map.json" \
+      "$PROJECT_ROOT/.agents/skills/project-mapper-simple/resources/project_map.json" \
+      "$PROJECT_ROOT/.agents/project_map.json" \
+      "$PROJECT_ROOT/project_map.json"; do
+      if [ -f "$candidate" ]; then
+        MAP="$candidate"
+        break
+      fi
+    done
+  fi
+  if [ -z "$MAP" ] || [ ! -f "$MAP" ]; then
+    echo "MAP_NOT_FOUND: no se encontró project_map.json en $PROJECT_ROOT (generarlo con project-mapper o usar --map <ruta>)." >&2
     exit 11
   fi
   ARGS=(--map "$MAP" "${ARGS[@]}")
@@ -38,14 +79,15 @@ fi
 
 # 2. OPENROUTER_API_KEY (fail-fast antes de crear/validar venv o contactar Qdrant)
 if [ "$HAS_API_KEY" -eq 0 ] && [ -z "${OPENROUTER_API_KEY:-}" ]; then
-  REAL_SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
-  REAL_ROOT="$(cd "$REAL_SCRIPT_DIR/../../../.." 2>/dev/null && pwd)"
-  FOUND=0
-  for f in "$PROJECT_ROOT/.env" "$REAL_ROOT/.env" "$SCRIPT_DIR/.env" "$HOME/.gemini/.env"; do
-    has_env_key "$f" && FOUND=1 && break
+  FOUND_ENV=0
+  for f in "$PROJECT_ROOT/.env" "$SCRIPT_DIR/.env" "$HOME/.gemini/.env"; do
+    if has_env_key "$f"; then
+      FOUND_ENV=1
+      break
+    fi
   done
-  if [ "$FOUND" -eq 0 ]; then
-    echo "ERROR: Falta OPENROUTER_API_KEY. Definila en $PROJECT_ROOT/.env, $SCRIPT_DIR/.env o ~/.gemini/.env (o exportala / --api-key)." >&2
+  if [ "$FOUND_ENV" -eq 0 ]; then
+    echo "ERROR: Falta OPENROUTER_API_KEY. Definila en $PROJECT_ROOT/.env o ~/.gemini/.env (o exportala / --api-key)." >&2
     exit 2
   fi
 fi

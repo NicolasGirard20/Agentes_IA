@@ -40,24 +40,42 @@ def load_dotenv(path: Path = Path(__file__).with_name(".env")) -> None:
 
 
 def find_project_root() -> Path:
-    """Raíz del proyecto = padre de la carpeta `.agents` que contiene esta skill."""
+    """Raíz del proyecto: padre de `.agents` si es local, o raíz desde CWD si la skill es global."""
+    home = Path.home()
     here = Path(__file__).absolute()
     for parent in here.parents:
-        if parent.name == ".agents":
+        if parent.name == ".agents" and parent.parent != home:
             return parent.parent
-    return Path.cwd()
+
+    cwd = Path.cwd().absolute()
+    for candidate in (cwd, *cwd.parents):
+        if (candidate != home and (candidate / ".agents").is_dir()) or (candidate / ".git").exists():
+            return candidate
+    return cwd
+
+
+def find_default_map_path(project_root: Path) -> str:
+    """Busca project_map.json en las ubicaciones estándar del proyecto."""
+    env_map = os.environ.get("RAG_MAP", "").strip()
+    if env_map:
+        return env_map
+    candidates = [
+        project_root / ".agents" / "skills" / "project-mapper" / "resources" / "project_map.json",
+        project_root / ".agents" / "skills" / "project-mapper-simple" / "resources" / "project_map.json",
+        project_root / ".agents" / "project_map.json",
+        project_root / "project_map.json",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
+    return str(candidates[0])
 
 
 PROJECT_ROOT = find_project_root()
-DEFAULT_MAP_PATH = str(PROJECT_ROOT / ".agents" / "skills" / "project-mapper" / "resources" / "project_map.json")
+DEFAULT_MAP_PATH = find_default_map_path(PROJECT_ROOT)
 
-# Prioridad: variable ya exportada > .env de la raíz (ruta lógica y real) > scripts/.env > ~/.gemini/.env
-_REAL_ROOT = Path(__file__).resolve().parent
-for _p in _REAL_ROOT.parents:
-    if _p.name == ".agents":
-        _REAL_ROOT = _p.parent
-        break
-for _env in (PROJECT_ROOT / ".env", _REAL_ROOT / ".env", Path(__file__).with_name(".env"), Path.home() / ".gemini" / ".env"):
+# Prioridad: variable ya exportada > .env de la raíz del proyecto > scripts/.env > ~/.gemini/.env
+for _env in (PROJECT_ROOT / ".env", Path(__file__).with_name(".env"), Path.home() / ".gemini" / ".env"):
     load_dotenv(_env)
 
 # Configuraciones por defecto

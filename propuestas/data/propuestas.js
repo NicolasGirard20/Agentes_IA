@@ -157,6 +157,26 @@ window.PROPUESTAS = {
           "hecho": false
         }
       ]
+    },
+    {
+      "id": "mwdy81i1k0dq",
+      "nombre": "Proyectos personales",
+      "items": [
+        {
+          "id": "mwdyb730zcl9",
+          "titulo": "Wallet",
+          "descripcion": "Tranferencias, ahorros, inversiones, planes de gasto",
+          "consideracion": "Falta conectar banco, mejorar estadísticas, agilizar botones más usados",
+          "hecho": false
+        },
+        {
+          "id": "mwdyc7diqzpj",
+          "titulo": "Inmovación",
+          "descripcion": "Gestión de inmobiliaria GBS",
+          "consideracion": "Falta cargar datos reales",
+          "hecho": false
+        }
+      ]
     }
   ]
 };

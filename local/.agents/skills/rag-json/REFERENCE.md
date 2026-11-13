@@ -12,10 +12,10 @@ Qdrant debe responder en `http://localhost:6333/healthz` (HTTP) y `6334` (gRPC).
 ```
 
 ## Opciones
-`rag.sh` pasa cualquier opción al script. Si no se indica `--map` ni formato, agrega el mapa fijo y `--rag`.
-Raíz del proyecto = carpeta que contiene `.agents/` (deducida de la ubicación de la skill).
+`rag.sh` pasa cualquier opción al script. Si no se indica `--map` ni formato, autodetecta el mapa y agrega `--rag`.
+Raíz del proyecto: si la skill está en `<raíz>/.agents/skills/rag-json`, usa `<raíz>`; si está en la ubicación global (`~/.gemini/config/skills/rag-json`), la busca subiendo desde el directorio actual (`.agents` o `.git`, o `$PWD`).
 Variables: `RAG_MAP` (override del mapa), `QDRANT_URL` (def. `http://localhost:6333`).
-`OPENROUTER_API_KEY`: variable exportada > `<raíz>/.env` > `scripts/.env`.
+`OPENROUTER_API_KEY`: variable exportada > `<raíz>/.env` > `scripts/.env` > `~/.gemini/.env`.
 
 | Opción | Descripción | Defecto |
 |---|---|---|

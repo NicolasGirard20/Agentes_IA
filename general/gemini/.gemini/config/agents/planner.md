@@ -65,6 +65,7 @@ If the map exceeds the critical threshold (>150 files or >40 KB), do not read th
      - **Objective & Steps:** concrete changes and logical sequence required.
      - **Writable files:** exact paths to create or modify (disjoint between parallel tasks).
      - **Read-only files:** relevant context paths.
+     - **Commit:** concise conventional commit message for this task (e.g. `feat(auth): add login`).
      - **Checks & Acceptance:** commands and validation criteria scoped to the task.
    - **Final Checks:** integration and test commands to run after all tasks finish.
 

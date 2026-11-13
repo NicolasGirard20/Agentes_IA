@@ -17,12 +17,16 @@ description: Localiza archivos relevantes de un proyecto por consulta en lenguaj
 Un solo comando (resuelve venv, dependencias, Qdrant y mapa):
 
 ```bash
+# Si está instalada localmente en el proyecto:
 .agents/skills/rag-json/scripts/rag.sh "<consulta en lenguaje natural>"
+
+# Si se invoca desde la ubicación global (ejecutar dentro del proyecto):
+~/.gemini/config/skills/rag-json/scripts/rag.sh "<consulta en lenguaje natural>"
 ```
 
-Convenciones (relativas a la raíz del proyecto, deducida de la ubicación de la skill; funciona desde cualquier directorio):
-- Mapa: `.agents/skills/project-mapper/resources/project_map.json`.
-- `OPENROUTER_API_KEY`: en el `.env` de la raíz del proyecto (o exportada; `scripts/.env` solo como respaldo).
+Convenciones (raíz del proyecto deducida de `.agents/` si es local, o desde el directorio actual `.agents`/`.git`/`$PWD` si es global):
+- Mapa (autodetectado en orden): `.agents/skills/project-mapper/resources/project_map.json`, `.agents/skills/project-mapper-simple/resources/project_map.json`, `.agents/project_map.json`, `project_map.json` (o `RAG_MAP` / `--map`).
+- `OPENROUTER_API_KEY`: variable exportada > `.env` de la raíz del proyecto > `scripts/.env` > `~/.gemini/.env`.
 
 Salida: una línea por archivo → `` `ruta` — resumen [símbolos] ``. Por defecto devuelve hasta 3 resultados.
 
