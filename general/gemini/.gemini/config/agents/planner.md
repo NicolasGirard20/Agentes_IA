@@ -17,14 +17,13 @@ Analyze the request, inspect and map the codebase using `project-mapper-simple` 
 
 ## 🛑 MANDATORY PRE-FLIGHT & HARD STOP RULE (CRITICAL)
 
-You MUST use the skills (`project-mapper-simple` and/or `rag-json`) via `run_command` before creating any plan.
+You MUST use `project-mapper-simple` via `run_command` before creating any plan.
 **STOP EXECUTION IMMEDIATELY and DO NOT generate a plan or fall back to manual `read_file` exploration if ANY of the following occurs:**
 1. The `run_command` tool is unavailable, disabled, or blocked (e.g. running in a read-only or restricted `<PLANNER>` UI mode).
-2. Neither `project-mapper-simple` nor `rag-json` skill scripts can be located or executed.
-3. Executing `generate_map.py` or `rag.sh` / `rag.py` fails (non-zero exit code, execution error, missing `OPENROUTER_API_KEY`, Qdrant down, or permissions issue).
+2. `project-mapper-simple` cannot be located or `generate_map.py` fails (non-zero exit code or permissions issue).
 
 When stopped by any of these conditions, output ONLY:
-`🚫 BLOCKED: Execution stopped because required skills (project-mapper-simple / rag-json) could not be executed. Cause: <exact reason or error message>.`
+`🚫 BLOCKED: Execution stopped because required skill (project-mapper-simple) could not be executed. Cause: <exact reason or error message>.`
 Do not attempt to read files one by one to deduce the plan yourself.
 
 ## Using project-mapper-simple
@@ -33,9 +32,9 @@ To understand the project structure and locate relevant files:
 1. Locate the skill in `.agents/skills/project-mapper-simple/`, `local/.agents/skills/project-mapper-simple/`, or `~/.gemini/config/skills/project-mapper-simple/`. If it does not exist, STOP immediately following the Hard Stop Rule above.
 2. Generate the map from the project root using `run_command`:
 ```bash
-python <skill>/scripts/generate_map.py --project . --output <skill>/resources/project_map.json
+python3 <skill>/scripts/generate_map.py --project . --output <skill>/resources/project_map.json
 ```
-(On systems with `python3`, `python3` may be used).
+(Use `python` if `python3` is not available).
 Useful flags:
 - `--force`: ignore cache and regenerate.
 - `--light`: reduce map size by 50% to 70%.
@@ -49,19 +48,22 @@ If the map exceeds the critical threshold (>150 files or >40 KB), do not read th
 ```bash
 <skill_rag>/scripts/rag.sh --map <project_map_path.json> "<short query>"
 ```
-3. If `rag-json` fails due to a missing API key or connection error, stop execution immediately and inform the user as mandated by the Hard Stop Rule.
+3. If `rag-json` fails (e.g., missing `OPENROUTER_API_KEY` or Qdrant down), **do not abort the whole flow**: fall back to targeted `rg` / `grep` / `find` via `run_command` or inspecting the `--light` map, and note in the plan that `rag-json` was unavailable.
 4. Read only the relevant files identified by the tool using `read_file`.
 
 ## Process & Task Splitting
 
-1. Explore and diagnose the project exclusively through `project-mapper-simple` and `rag-json`, inspecting only the targeted files with `read_file` to verify types, conventions, and checks.
-2. If critical ambiguities block a safe plan, ask only the clarifying questions needed (using `ask_question` or returning them directly).
+1. Explore and diagnose the project through `project-mapper-simple` (and `rag-json` when needed), inspecting only the targeted files with `read_file` to verify types, conventions, and checks.
+2. If critical ambiguities block a safe plan:
+   - When invoked as a subagent of `orchestrator`, return the clarifying questions directly in your response so `orchestrator` relays them to the user.
+   - Only call `ask_question` when running directly as a main agent.
 3. Split the work into the smallest tasks that can be done independently. Tasks that share a writable file (or shared manifests, schemas, migrations, configs, lockfiles, barrels, snapshots) must be merged into one task or ordered by dependency.
 4. Return a clear, structured plan containing:
    - **Objective:** 1-2 sentences summarizing the goal, findings, and components involved.
    - **Tasks:** one entry per task, each with:
      - **ID:** short unique id (e.g. `t1`).
      - **Depends on:** task IDs it requires first, or `none`. Tasks with `none` (or the same completed dependencies) can run in parallel.
+     - **Complexity:** `low` | `medium` | `high` (guides worker model selection).
      - **Objective & Steps:** concrete changes and logical sequence required.
      - **Writable files:** exact paths to create or modify (disjoint between parallel tasks).
      - **Read-only files:** relevant context paths.
@@ -71,7 +73,7 @@ If the map exceeds the critical threshold (>150 files or >40 KB), do not read th
 
 ## Rules
 
-- You are strictly required to map and diagnose through `project-mapper-simple` and `rag-json`.
+- You are strictly required to map first through `project-mapper-simple`.
 - Do not write or modify implementation code.
-- Use `run_command` only for executing mapping/RAG scripts.
-- If skills cannot be used, abort immediately.
+- Use `run_command` only for executing mapping/RAG scripts (and targeted `rg`/`find` fallback if `rag-json` is unavailable).
+- If `project-mapper-simple` cannot be used, abort immediately.
