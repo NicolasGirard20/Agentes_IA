@@ -11,13 +11,20 @@ description: Genera un mapa estructural liviano del proyecto en formato JSON (ar
 > - **Umbral crítico:** Más de **150-200 archivos**, tamaño JSON **> 40-50 KB** o **> 4.000 tokens estimados**.
 > - **Impacto:** Cargar este JSON completo satura la ventana de contexto del agente, reduce el espacio para código/instrucciones y eleva costos y latencia.
 > - **Recomendaciones ante proyectos grandes:**
->   1. Usar el flag `--light` para omitir detalles de métodos/clases y reducir el tamaño entre un 50% y 70%.
->   2. Excluir carpetas no críticas con `--exclude "<patron>"` (ej. `--exclude "tests/**"`, `--exclude "docs/**"`).
->   3. Si el proyecto sigue superando los 4.000 tokens, usar la skill **`rag-json`** (búsqueda vectorial).
+>   1. Si el mapa se usa para alimentar **`rag-json`**, generarlo **completo (sin `--light`)** para conservar `context`, `keywords`, `docstrings` y métodos.
+>   2. Si se inyectará el JSON directo en el prompt, usar `--light` (conserva `path`, `summary`, `imports`, `exports`, `complexity`) o excluir carpetas no críticas con `--exclude "<patron>"`.
+>   3. Si el proyecto sigue superando los 4.000 tokens, usar la skill **`rag-json`** (búsqueda vectorial híbrida).
 
 ## Objetivo
 
-Escanear la raíz de un proyecto y generar un único archivo JSON estructurado (`project_map.json`) que contenga el mapa completo de archivos, símbolos (clases, funciones), imports/exports y grafo de dependencias, sin pasos intermedios ni dependencias externas.
+Escanear la raíz de un proyecto y generar un único archivo JSON estructurado (`project_map.json`) que contenga el mapa de archivos, rol arquitectónico, contexto semántico (`summary`, `context`, `keywords`), símbolos (clases, métodos, funciones, docstrings, atributos), imports/exports y grafo de dependencias cruzado, sin dependencias externas (Python stdlib puro).
+
+Lenguajes soportados con extractores modulares (`scripts/extractors/`):
+- **Python** (`.py`): AST completo, docstrings de módulo/clase/función, bases y argumentos.
+- **JavaScript / TypeScript** (`.js`, `.ts`, `.jsx`, `.tsx`, `.mjs`, `.cjs`): clases, funciones/arrows, JSDoc y endpoints consumidos.
+- **C#** (`.cs`): `namespace`, `using`, clases/interfaces/enums, herencia, atributos (`[HttpPost]`, `[Authorize]`, `[Route]`), comentarios XML `/// <summary>`, métodos y referencias a tipos/DbSet.
+- **Razor / HTML** (`.cshtml`, `.html`, `.htm`): `@model`, `Layout`, `ViewBag.Title`, encabezados, parciales (`@Html.Partial`), acciones (`@Url.Action`, `BeginForm`), `<script src>` y funciones JS embebidas.
+- **SQL / PowerShell / Markdown / Config** (`.sql`, `.ps1`, `.md`, `.config`, `.xml`, `.json`): tablas/SPs, funciones, títulos/secciones y claves estructurales (sin secretos).
 
 ---
 
@@ -69,45 +76,50 @@ El archivo `project_map.json` contiene la siguiente estructura:
   "total_files": 42,
   "total_symbols": 128,
   "architecture": {
-    "entry_points": ["main.py"],
-    "core_modules": ["src"],
-    "utils": ["utils"],
+    "entry_points": ["Global.asax.cs"],
+    "core_modules": ["Controllers", "DAO", "Models", "Services", "Views"],
+    "utils": ["Scripts", "Utiles"],
     "tests": ["tests"],
-    "config": ["config"],
+    "config": [],
     "infrastructure": [],
-    "all_directories": ["src", "tests", "utils"]
+    "all_directories": ["Controllers", "DAO", "Models", "Services", "Views"]
   },
   "files": [
     {
-      "path": "src/app.py",
-      "language": "python",
-      "size_lines": 85,
-      "summary": "Módulo Python con 2 clases y 3 funciones",
-      "imports": ["os", "sys"],
-      "exports": ["AppService"],
+      "path": "Services/ChatbotService.cs",
+      "language": "csharp",
+      "role": "Servicio de negocio",
+      "size_lines": 306,
+      "summary": "Servicio de negocio | Clases: ChatbotResponseDto, ChatbotService | Métodos/Funciones: SendMessageAsync",
+      "context": "Rol: Servicio de negocio. Namespace: Autogestion.Services. Tipos: ChatbotService: Servicio que administra la comunicación segura con el Webhook de IA/Chatbot...",
+      "keywords": ["ChatbotService", "SendMessageAsync", "EnvHelper"],
+      "imports": ["Autogestion.Models.DBModel", "Autogestion.Utiles"],
+      "exports": ["ChatbotResponseDto", "ChatbotService", "SendMessageAsync"],
       "classes": [
         {
-          "name": "AppService",
-          "docstring": "Servicio principal...",
-          "methods": ["run", "stop"]
+          "name": "ChatbotService",
+          "docstring": "Servicio que administra la comunicación segura con el Webhook de IA/Chatbot...",
+          "methods": ["SendMessageAsync"]
         }
       ],
       "functions": [
         {
-          "name": "init_app",
-          "args": ["config"],
-          "is_async": false
+          "name": "SendMessageAsync",
+          "return_type": "Task<ChatbotResponseDto>",
+          "args": ["message", "sessionId", "userId", "userName"],
+          "is_async": true,
+          "docstring": "Envía el mensaje del usuario al Webhook externo mediante POST seguro..."
         }
       ],
-      "complexity": "medium"
+      "complexity": "high"
     }
   ],
   "dependency_graph": {
-    "src/app.py": ["src/utils/logger.py"]
+    "Controllers/ChatbotController.cs": ["Services/ChatbotService.cs"]
   },
   "metadata": {
-    "mapper_version": "3.0.0",
-    "languages_found": ["python", "typescript"]
+    "mapper_version": "4.0.0",
+    "languages_found": ["csharp", "razor", "javascript", "sql"]
   }
 }
 ```

@@ -48,8 +48,19 @@ def find_project_root() -> Path:
     return Path.cwd()
 
 
+def _default_map_path() -> str:
+    candidates = (
+        PROJECT_ROOT / ".agents" / "skills" / "project-mapper-simple" / "resources" / "project_map.json",
+        PROJECT_ROOT / ".agents" / "skills" / "project-mapper" / "resources" / "project_map.json",
+    )
+    for cand in candidates:
+        if cand.is_file():
+            return str(cand)
+    return str(candidates[0])
+
+
 PROJECT_ROOT = find_project_root()
-DEFAULT_MAP_PATH = str(PROJECT_ROOT / ".agents" / "skills" / "project-mapper" / "resources" / "project_map.json")
+DEFAULT_MAP_PATH = _default_map_path()
 
 # Prioridad: variable ya exportada > .env de la raíz (ruta lógica y real) > scripts/.env > ~/.gemini/.env
 _REAL_ROOT = Path(__file__).resolve().parent
@@ -85,14 +96,20 @@ DEFAULT_SKIP_PREFIXES = (
     "dist/",
     "build/",
     "coverage/",
+    "packages/",
+    "bin/",
+    "obj/",
+    ".vs/",
+    ".agents/",
     ".idea/",
     ".vscode/",
 )
 
 DEFAULT_SKIP_EXTENSIONS = (
     ".docx", ".xlsx", ".xls", ".pdf", ".png", ".jpg", ".jpeg", ".gif",
-    ".svg", ".ico", ".zip", ".tar", ".gz", ".woff", ".woff2", ".ttf",
+    ".webp", ".svg", ".ico", ".zip", ".tar", ".gz", ".woff", ".woff2", ".ttf", ".otf",
     ".eot", ".mp4", ".webm", ".lock", ".min.js", ".min.css", ".map",
+    ".nupkg", ".pdb", ".exe", ".dll", ".xdt", ".transform",
 )
 
 DEFAULT_SKIP_BASENAMES = {
@@ -237,29 +254,51 @@ def is_junk_path(path: str, extra_skip_prefixes: tuple[str, ...] = ()) -> bool:
 
 
 def extract_symbols(entry: dict) -> list[str]:
-    """Extrae nombres de funciones, clases y exportaciones tolerando formato string u objeto."""
+    """Extrae nombres de funciones, clases, métodos y exportaciones tolerando formato string u objeto."""
     names = []
     for item in entry.get("functions", []):
         name = item.get("name") if isinstance(item, dict) else item
         if name and isinstance(name, str):
             names.append(name.strip())
     for item in entry.get("classes", []):
-        name = item.get("name") if isinstance(item, dict) else item
-        if name and isinstance(name, str):
-            names.append(name.strip())
+        if isinstance(item, dict):
+            name = item.get("name")
+            if name and isinstance(name, str):
+                names.append(name.strip())
+            for m in item.get("methods", []) or []:
+                if isinstance(m, str) and m.strip():
+                    names.append(m.strip())
+        elif isinstance(item, str) and item.strip():
+            names.append(item.strip())
     for item in entry.get("exports", []):
         name = item.get("name") if isinstance(item, dict) else item
         if name and isinstance(name, str):
             names.append(name.strip())
-    return [n for n in names if n]
+    return list(dict.fromkeys(n for n in names if n))
+
+
+def extract_docstrings(entry: dict) -> str:
+    """Extrae docstrings de clases y funciones de una entrada del mapa."""
+    docs = []
+    for group in ("classes", "functions"):
+        for item in entry.get(group, []):
+            if isinstance(item, dict) and item.get("docstring"):
+                name = item.get("name", "")
+                doc = str(item["docstring"]).strip()
+                docs.append(f"{name}: {doc}" if name else doc)
+    return " | ".join(docs[:10])
 
 
 def flatten_file_entry(file_entry: dict, dependents: list[str] | None = None) -> str:
     """Convierte una entrada de archivo en un texto estructurado y rico para embeddings."""
     path = file_entry.get("path", "")
+    role = file_entry.get("role", "")
     summary = file_entry.get("summary", "Sin resumen")
+    context = file_entry.get("context", "")
+    keywords = file_entry.get("keywords", [])
     language = file_entry.get("language", "desconocido")
     symbols = extract_symbols(file_entry)
+    docstrings = extract_docstrings(file_entry)
     imports = file_entry.get("imports", [])
     complexity = file_entry.get("complexity", "")
 
@@ -267,12 +306,20 @@ def flatten_file_entry(file_entry: dict, dependents: list[str] | None = None) ->
         f"Archivo: {path}",
         f"Nombre: {Path(path).stem}",
         f"Lenguaje: {language}",
-        f"Resumen: {summary}",
     ]
+    if role:
+        parts.append(f"Rol: {role}")
+    parts.append(f"Resumen: {summary}")
+    if context:
+        parts.append(f"Contexto: {context}")
+    if keywords:
+        parts.append(f"Palabras clave: {', '.join(str(k) for k in keywords[:20])}")
     if symbols:
-        parts.append(f"Símbolos (funciones/clases/exports): {', '.join(symbols)}")
+        parts.append(f"Símbolos (funciones/clases/exports): {', '.join(symbols[:30])}")
+    if docstrings:
+        parts.append(f"Documentación de símbolos: {docstrings}")
     if imports:
-        parts.append(f"Importaciones: {', '.join(imports)}")
+        parts.append(f"Importaciones: {', '.join(imports[:25])}")
     if dependents:
         parts.append(f"Utilizado por: {', '.join(dependents[:10])}")
     if complexity:
@@ -339,23 +386,26 @@ def compute_idf(docs_tokens: list[list[str]]) -> dict[str, float]:
 
 def sparse_from_fields(fields: dict[str, list[str]], idf: dict[str, float]) -> models.SparseVector:
     tf = Counter()
-    weights = {"symbols": 4, "path": 3, "summary": 2, "imports": 1, "dependents": 1}
+    weights = {"symbols": 4, "path": 3, "context": 2, "summary": 2, "imports": 1, "dependents": 1}
     for name, toks in fields.items():
         w = weights.get(name, 1)
         for tok in toks:
             tf[tok] += w
 
-    indices = []
-    values = []
+    idx_values: dict[int, float] = {}
     for tok, freq in tf.items():
         weight = idf.get(tok, 1.0)
         effective = freq if freq <= 1.0 else 1.0 + math.log(freq)
-        indices.append(token_index(tok))
-        values.append(effective * weight)
+        idx = token_index(tok)
+        idx_values[idx] = idx_values.get(idx, 0.0) + effective * weight
 
-    if not indices:
+    if not idx_values:
         return models.SparseVector(indices=[0], values=[0.0])
-    return models.SparseVector(indices=indices, values=values)
+    sorted_items = sorted(idx_values.items())
+    return models.SparseVector(
+        indices=[idx for idx, _ in sorted_items],
+        values=[val for _, val in sorted_items],
+    )
 
 
 def _openrouter_post(payload: dict, headers: dict) -> dict:
@@ -480,9 +530,16 @@ class ProjectMapEngine:
         for entry in selected:
             path = entry.get("path", "")
             deps = sorted(dependents_map.get(path, []))
+            rich_context = " ".join([
+                entry.get("role", ""),
+                entry.get("context", ""),
+                " ".join(str(k) for k in entry.get("keywords", [])),
+                extract_docstrings(entry),
+            ])
             fields_list.append({
                 "path": tokenize(path),
                 "symbols": tokenize(" ".join(extract_symbols(entry))),
+                "context": tokenize(rich_context),
                 "summary": tokenize(entry.get("summary", "")),
                 "imports": tokenize(" ".join(entry.get("imports", []))),
                 "dependents": tokenize(" ".join(deps)),
@@ -555,7 +612,11 @@ class ProjectMapEngine:
                         "project": self.project_name,
                         "file": path,
                         "language": entry.get("language", "unknown"),
+                        "role": entry.get("role", ""),
                         "summary": entry.get("summary", ""),
+                        "context": entry.get("context", ""),
+                        "keywords": entry.get("keywords", []),
+                        "docstrings": extract_docstrings(entry),
                         "imports": entry.get("imports", []),
                         "exports": [x.get("name") if isinstance(x, dict) else x for x in entry.get("exports", [])],
                         "functions": [x.get("name") if isinstance(x, dict) else x for x in entry.get("functions", [])],
@@ -657,9 +718,15 @@ class ProjectMapEngine:
             cosine = float(np.dot(dense_vec, query_dense))
             dense_norm = max(0.0, min(1.0, (cosine - DENSE_FLOOR) / (1.0 - DENSE_FLOOR)))
 
-            # Puntuación léxica (incluye symbols, path, summary, imports y dependents)
+            # Puntuación léxica (incluye symbols, path, context, summary, imports y dependents)
             doc_symbols = set(tokenize(" ".join(payload.get("functions", []) + payload.get("classes", []) + payload.get("exports", []))))
             doc_path = set(tokenize(payload.get("file", "")))
+            doc_context = set(tokenize(" ".join([
+                payload.get("role", ""),
+                payload.get("context", ""),
+                " ".join(str(k) for k in payload.get("keywords", [])),
+                payload.get("docstrings", ""),
+            ])))
             doc_summary = set(tokenize(payload.get("summary", "")))
             doc_imports = set(tokenize(" ".join(payload.get("imports", []))))
             doc_dependents = set(tokenize(" ".join(payload.get("dependents", []))))
@@ -673,6 +740,9 @@ class ProjectMapEngine:
                     matched.append(tok)
                 elif tok in doc_path:
                     lex_score += 3.0 * w
+                    matched.append(tok)
+                elif tok in doc_context:
+                    lex_score += 2.0 * w
                     matched.append(tok)
                 elif tok in doc_summary:
                     lex_score += 1.5 * w

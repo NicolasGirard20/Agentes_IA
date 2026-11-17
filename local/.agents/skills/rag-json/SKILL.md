@@ -21,7 +21,7 @@ Un solo comando (resuelve venv, dependencias, Qdrant y mapa):
 ```
 
 Convenciones (relativas a la raíz del proyecto, deducida de la ubicación de la skill; funciona desde cualquier directorio):
-- Mapa: `.agents/skills/project-mapper/resources/project_map.json`.
+- Mapa: `.agents/skills/project-mapper-simple/resources/project_map.json` (con respaldo a `.agents/skills/project-mapper/resources/project_map.json`).
 - `OPENROUTER_API_KEY`: en el `.env` de la raíz del proyecto (o exportada; `scripts/.env` solo como respaldo).
 
 Salida: una línea por archivo → `` `ruta` — resumen [símbolos] ``. Por defecto devuelve hasta 3 resultados.
