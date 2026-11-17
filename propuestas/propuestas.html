@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Propuestas</title>
+<style>
+  :root { --bg:#0f1117; --card:#1a1d27; --bd:#2a2f3d; --tx:#e6e8ee; --mu:#8b92a5; --ac:#6ea8fe; --ok:#4ade80; --bad:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--tx); }
+  main { max-width:900px; margin:0 auto; padding:24px 16px 80px; }
+  h1 { margin:0 0 4px; }
+  .sub { color:var(--mu); font-size:13px; margin-bottom:16px; }
+  .bar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; align-items:center; }
+  input,textarea,select { background:#12141c; color:var(--tx); border:1px solid var(--bd); border-radius:6px; padding:7px 9px; font:inherit; }
+  textarea { width:100%; resize:vertical; }
+  button { background:var(--card); color:var(--tx); border:1px solid var(--bd); border-radius:6px; padding:6px 11px; cursor:pointer; font:inherit; }
+  button:hover { border-color:var(--ac); }
+  button.pri { background:var(--ac); color:#0b1220; border-color:var(--ac); font-weight:600; }
+  .dd { position:relative; }
+  #menu { position:absolute; top:100%; left:0; margin-top:4px; z-index:10; display:flex; flex-direction:column; gap:2px; background:var(--card); border:1px solid var(--bd); border-radius:6px; padding:4px; min-width:100%; }
+  #menu[hidden] { display:none; }
+  #menu button { text-align:left; border:0; white-space:nowrap; }
+  button.del:hover { border-color:var(--bad); color:var(--bad); }
+  .grow { flex:1; min-width:160px; }
+  .tema { background:var(--card); border:1px solid var(--bd); border-radius:10px; margin-bottom:16px; }
+  .tema > header { display:flex; align-items:center; gap:8px; padding:12px 14px; cursor:pointer; }
+  .tema h2 { margin:0; font-size:17px; flex:1; }
+  .prog { color:var(--mu); font-size:13px; }
+  .body { padding:0 14px 14px; }
+  .item { display:flex; gap:10px; padding:10px 0; border-top:1px solid var(--bd); }
+  .item.done .tit { text-decoration:line-through; color:var(--mu); }
+  .item input[type=checkbox] { margin-top:5px; width:17px; height:17px; }
+  .tit { font-weight:600; }
+  .desc { color:var(--mu); font-size:14px; white-space:pre-wrap; }
+  .con { font-size:13px; color:#fbbf24; margin-top:2px; white-space:pre-wrap; }
+  .acts { display:flex; gap:4px; }
+  .acts button { padding:2px 8px; font-size:12px; }
+  form.add { display:grid; gap:6px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--bd); }
+  .empty { color:var(--mu); padding:10px 0; font-style:italic; }
+  .toast { position:fixed; bottom:16px; right:16px; background:var(--ok); color:#06200f; padding:8px 14px; border-radius:6px; display:none; }
+  .dirty { color:var(--bad); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>📋 Propuestas</h1>
+  <div class="sub">Los cambios se guardan en este navegador (localStorage). <b>Descargar</b> ofrece <code>.js</code> (datos que lee esta página: reemplazá <code>data/propuestas.js</code>) o <code>.md</code>; después hacé el commit. <span id="dirty" class="dirty"></span></div>
+
+  <div class="bar">
+    <input id="q" class="grow" placeholder="Buscar…">
+    <select id="f"><option value="all">Todos</option><option value="pend">Pendientes</option><option value="hecho">Hechos</option></select>
+    <span class="dd">
+      <button id="save" class="pri">Descargar ▾</button>
+      <div id="menu" hidden><button data-fmt="js">.js (datos)</button><button data-fmt="md">.md</button></div>
+    </span>
+    <button id="imp">Importar</button>
+    <button id="reset" class="del">Restaurar base</button>
+    <input type="file" id="file" accept=".js,.json" hidden>
+  </div>
+
+  <form id="newTema" class="bar">
+    <input id="nt" class="grow" placeholder="Nuevo tema (ej: Plugins, Ideas UI…)" required>
+    <button class="pri">+ Agregar tema</button>
+  </form>
+
+  <div id="app"></div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script src="data/propuestas.js"></script>
+<script>
+const KEY = 'propuestas.v1';
+let base = JSON.parse(JSON.stringify(window.PROPUESTAS || { temas: [] }));
+let saved = localStorage.getItem(KEY);
+let data = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(base));
+const collapsed = {};
+const $ = s => document.querySelector(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function save() { localStorage.setItem(KEY, JSON.stringify(data)); render(); }
+function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 2200); }
+
+function render() {
+  const q = $('#q').value.toLowerCase(), f = $('#f').value;
+  $('#dirty').textContent = JSON.stringify(data) !== JSON.stringify(base) ? '● cambios sin exportar/commitear' : '';
+  $('#app').innerHTML = data.temas.map(t => {
+    const done = t.items.filter(i => i.hecho).length;
+    const vis = t.items.filter(i =>
+      (f === 'all' || (f === 'hecho') === i.hecho) &&
+      (!q || (i.titulo + i.descripcion + i.consideracion + t.nombre).toLowerCase().includes(q)));
+    return `<section class="tema" data-t="${t.id}">
+      <header data-act="toggle">
+        <span>${collapsed[t.id] ? '▸' : '▾'}</span>
+        <h2>${esc(t.nombre)}</h2>
+        <span class="prog">${done}/${t.items.length}</span>
+        <span class="acts"><button data-act="renT">Renombrar</button><button class="del" data-act="delT">Borrar</button></span>
+      </header>
+      ${collapsed[t.id] ? '' : `<div class="body">
+        ${vis.length ? vis.map(i => `<div class="item ${i.hecho ? 'done' : ''}" data-i="${i.id}">
+          <input type="checkbox" data-act="chk" ${i.hecho ? 'checked' : ''}>
+          <div style="flex:1"><div class="tit">${esc(i.titulo)}</div>
+            ${i.descripcion ? `<div class="desc">${esc(i.descripcion)}</div>` : ''}
+            ${i.consideracion ? `<div class="con">⚠ ${esc(i.consideracion)}</div>` : ''}</div>
+          <div class="acts"><button data-act="ed">Editar</button><button data-act="mv">Mover</button><button class="del" data-act="del">✕</button></div>
+        </div>`).join('') : '<div class="empty">Sin propuestas.</div>'}
+        <form class="add" data-act="add">
+          <input name="titulo" placeholder="Nueva propuesta…" required>
+          <textarea name="descripcion" rows="2" placeholder="Descripción (opcional)"></textarea>
+          <input name="consideracion" placeholder="Consideración (opcional)">
+          <div><button class="pri">+ Agregar propuesta</button></div>
+        </form></div>`}
+    </section>`;
+  }).join('') || '<div class="empty">Creá un tema para empezar.</div>';
+}
+
+$('#app').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b || b.tagName === 'FORM') return;
+  const sec = e.target.closest('.tema'), t = data.temas.find(x => x.id === sec.dataset.t);
+  const row = e.target.closest('.item'), it = row && t.items.find(x => x.id === row.dataset.i);
+  switch (b.dataset.act) {
+    case 'toggle': if (e.target.closest('.acts')) return; collapsed[t.id] = !collapsed[t.id]; render(); break;
+    case 'renT': { const n = prompt('Nombre del tema:', t.nombre); if (n && n.trim()) { t.nombre = n.trim(); save(); } break; }
+    case 'delT': if (confirm(`¿Borrar el tema "${t.nombre}" y sus ${t.items.length} propuestas?`)) { data.temas = data.temas.filter(x => x !== t); save(); } break;
+    case 'chk': it.hecho = e.target.checked; save(); break;
+    case 'ed': {
+      const ti = prompt('Título:', it.titulo); if (ti === null) return;
+      const de = prompt('Descripción:', it.descripcion); if (de === null) return;
+      const co = prompt('Consideración:', it.consideracion); if (co === null) return;
+      Object.assign(it, { titulo: ti.trim() || it.titulo, descripcion: de, consideracion: co }); save(); break; }
+    case 'mv': {
+      const opts = data.temas.map((x, n) => `${n + 1}. ${x.nombre}`).join('\n');
+      const n = parseInt(prompt('Mover a tema (número):\n' + opts), 10) - 1;
+      if (data.temas[n] && data.temas[n] !== t) { t.items = t.items.filter(x => x !== it); data.temas[n].items.push(it); save(); } break; }
+    case 'del': if (confirm('¿Borrar propuesta?')) { t.items = t.items.filter(x => x !== it); save(); } break;
+  }
+});
+
+$('#app').addEventListener('submit', e => {
+  e.preventDefault();
+  const t = data.temas.find(x => x.id === e.target.closest('.tema').dataset.t), fd = new FormData(e.target);
+  t.items.push({ id: uid(), titulo: fd.get('titulo').trim(), descripcion: fd.get('descripcion').trim(), consideracion: fd.get('consideracion').trim(), hecho: false });
+  save();
+});
+
+$('#newTema').addEventListener('submit', e => {
+  e.preventDefault();
+  data.temas.push({ id: uid(), nombre: $('#nt').value.trim(), items: [] });
+  $('#nt').value = ''; save();
+});
+
+$('#q').addEventListener('input', render);
+$('#f').addEventListener('change', render);
+
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+  toast('Descargado ' + name);
+}
+
+$('#save').onclick = e => { e.stopPropagation(); $('#menu').hidden = !$('#menu').hidden; };
+document.addEventListener('click', () => $('#menu').hidden = true);
+$('#menu').addEventListener('click', e => {
+  const fmt = e.target.dataset.fmt; if (!fmt) return;
+  if (fmt === 'js') download('propuestas.js', 'window.PROPUESTAS = ' + JSON.stringify(data, null, 2) + ';\n', 'text/javascript');
+  else download('Propuestas.md', '# Propuestas\n\n' + data.temas.map(t =>
+    `## ${t.nombre}\n` + t.items.map(i => `- [${i.hecho ? 'x' : ' '}] **${i.titulo}**${i.descripcion ? ': ' + i.descripcion.replace(/\n/g, ' ') : ''}` +
+      (i.consideracion ? `\n     *Consideración*: ${i.consideracion.replace(/\n/g, ' ')}` : '')).join('\n') + '\n').join('\n'), 'text/markdown');
+  if (fmt === 'js') { base = JSON.parse(JSON.stringify(data)); render(); }
+});
+
+$('#imp').onclick = () => $('#file').click();
+$('#file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const txt = (await f.text()).trim().replace(/^window\.PROPUESTAS\s*=\s*/, '').replace(/;\s*$/, '');
+    const d = JSON.parse(txt); if (!Array.isArray(d.temas)) throw 0;
+    if (confirm('Esto reemplaza los datos actuales. ¿Continuar?')) { data = d; save(); toast('Importado'); }
+  } catch { alert('Archivo inválido'); }
+  e.target.value = '';
+};
+$('#reset').onclick = () => { if (confirm('¿Descartar cambios locales y volver a data/propuestas.js?')) { data = JSON.parse(JSON.stringify(base)); localStorage.removeItem(KEY); render(); } };
+
+render();
+</script>
+</body>
+</html>
