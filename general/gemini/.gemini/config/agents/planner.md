@@ -75,6 +75,10 @@ python3 <skill>/scripts/generate_map.py --project . --output <skill>/resources/p
      - **Commit:** concise conventional commit message for this task (e.g. `feat(auth): add login`).
      - **Checks & Acceptance:** commands and validation criteria scoped to the task.
    - **Final Checks:** integration and test commands to run after all tasks finish.
+   - **UI Verification:** `none` if the request has no web/browser UI impact; otherwise specify the target URL/route, start command (if non-standard), and the exact user flows and visual/functional assertions for `verifier` to check with `playwright-cli`.
+5. **Incremental Re-planning (after execution or `verifier` failure):**
+   - When `orchestrator` re-invokes or messages you with a `build-orquestor-cli` or `verifier` failure report along with already-completed tasks and modified files on disk, treat those completed changes as the current baseline.
+   - Do **not** re-plan or rewrite working parts from scratch; plan only the minimal incremental delta tasks needed to fix the reported errors.
 
 ## Rules
 
