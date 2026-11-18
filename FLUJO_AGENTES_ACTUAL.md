@@ -1,106 +1,100 @@
 # Flujo actual de agentes
 
 Diagrama construido a partir de los archivos actuales en
-`general/opencode/.opencode/agent/`.
+`general/gemini/.gemini/config/agents/`.
 
 ```mermaid
 flowchart TD
-    IN([Solicitud del usuario]) --> ROUTE{Ruta de trabajo}
+    IN(["Solicitud del usuario"]) --> ENTRY{"Punto de entrada"}
 
-    ROUTE -->|Flujo especializado| PO[product-owner\nDefine alcance y requisitos]
-    ROUTE -->|Tarea general| GEN[general\nAnaliza, busca, implementa o delega]
-    ROUTE -->|Pruebas independientes| TEST[tester\nPrueba en .tester/tests/ e informa riesgos]
+    ENTRY -->|"Flujo orquestado (principal)"| ORCH["orchestrator\nCoordina el ciclo completo e inicializa workers-status.md"]
+    ENTRY -->|"Suite de pruebas independiente"| TEST["test\nMapea con project-mapper-simple / rag-json y consulta ui-skills"]
 
-    PO --> PO_STATUS{Estado de requisitos}
-    PO_STATUS -->|NEEDS_CLARIFICATION| ASK[Orquestador muestra preguntas]
-    ASK --> ANSWER([Respuesta del usuario])
-    ANSWER --> PO
-    PO_STATUS -->|READY| PDR{Persistir PDR?}
-    PDR -->|Sí, con aprobación| PO_PERSIST[product-owner\nActualiza PRODUCT_REQUIREMENTS.md]
-    PDR -->|No| PLAN
-    PO_PERSIST --> PLAN[planificador\nEjecuta project-mapper y analiza]
+    %% Ruta independiente: test
+    TEST --> TEST_SCOPE{"¿Alcance claro?"}
+    TEST_SCOPE -->|"No"| TEST_ASK["ask_question al usuario"]
+    TEST_ASK --> TEST
+    TEST_SCOPE -->|"Sí"| TEST_BUILD["Crea y ejecuta tests\ntest/unit-test/ y test/e2e/ (playwright@latest)"]
+    TEST_BUILD --> TEST_OUT(["Resultados en test/results/ y reporte"])
 
-    GEN --> GEN_GIT{Necesita Git?}
-    GEN_GIT -->|Solo lectura\nsegún general.md actual| GEN_READ[Ejecuta Git de lectura]
-    GEN_GIT -->|Escritura, remoto o historial| ORCH_GIT[Informa al orquestador]
-    GEN -->|No| GEN_WORK[Resuelve la tarea general]
-    GEN_READ --> GEN_WORK
-    GEN_WORK --> OUT([Resultado])
+    %% Flujo principal: orchestrator -> planner
+    ORCH -->|"1. Invoca (inherit)"| PLAN["planner\nPre-flight obligatorio: rag-json (fallback project-mapper-simple)"]
+    PLAN --> PLAN_GATE{"¿Skills OK y mapa dentro de umbral?\n(<=150 archivos y <=40 KB)"}
+    PLAN_GATE -->|"No"| PLAN_BLOCK(["🚫 BLOCKED: aborta sin planificar"])
+    PLAN_GATE -->|"Sí"| PLAN_AMB{"¿Ambigüedades críticas?"}
+    PLAN_AMB -->|"Sí"| CLARIFY["orchestrator pregunta al usuario\ny reenvía respuestas a planner"]
+    CLARIFY --> PLAN
+    PLAN_AMB -->|"No"| PLAN_OUT["Plan dividido en tareas\n(Depends on, Writable files, Complexity, Commit, UI Verification)"]
 
-    TEST --> TEST_OUT[Reporte: APROBADO, APROBADO CON RIESGOS o FALLA]
-    TEST_OUT --> OUT
+    PLAN_OUT --> APPROVE{"3. ¿Usuario aprueba el plan?"}
+    APPROVE -->|"No: pide cambios"| PLAN
+    APPROVE -->|"Sí"| BUILD_INIT["4. orchestrator inicializa workers-status.md (⏳ PENDING)\ne invoca build-orquestor-cli (flash)"]
 
-    PROPOSAL([Propuesta de implementación]) --> BO[build-orquestor\nPlanifica y divide]
-    BO --> BC[build-constructor\nConstruye la tarea asignada]
-    BC --> BC_VERIFY[Verificaciones de cada tarea]
-    BC_VERIFY --> OUT
+    %% Ejecución: build-orquestor-cli -> workers agy
+    BUILD_INIT --> BO["build-orquestor-cli\nDespacha waves en paralelo (máx. 5, archivos disjuntos)"]
+    BO --> AGY["Workers headless agy CLI (--sandbox)\nModelo según Complexity"]
+    AGY --> TASK_RES{"Resultado de tarea"}
+    TASK_RES -->|"FAILED (1er intento)"| RETRY["Reintenta 1 vez con modelo superior\n(gemini-4-argon-low / gemini-4-hydrogen-high)"]
+    RETRY --> TASK_RES
+    TASK_RES -->|"BLOCKED o FAILED x2"| SKIP_DEP["Marca dependientes ⏭️ SKIPPED\ny omite Final Checks"]
+    TASK_RES -->|"Todas ✅ DONE"| FINAL_CHK["Ejecuta Final Checks del plan"]
 
-    PLAN --> PLAN_OUT[Diagnóstico + plan + contexto]
-    PLAN_OUT --> APPROVE{¿Usuario aprueba el plan?}
-    APPROVE -->|No: pide cambios| PLAN
-    APPROVE -->|Sí| ARCH_DEC{Decisión arquitectónica}
+    FINAL_CHK --> BUILD_OK{"5. ¿Build y Final Checks OK?"}
+    BUILD_OK -->|"No"| BUILD_FAIL_ASK{"orchestrator pregunta al usuario"}
+    SKIP_DEP --> BUILD_FAIL_ASK
+    BUILD_FAIL_ASK -->|"Retry failed tasks"| BO
+    BUILD_FAIL_ASK -->|"Re-plan with planner (incremental)"| PLAN
+    BUILD_FAIL_ASK -->|"Stop here"| END_STOP(["Fin sin commit"])
 
-    ARCH_DEC -->|ARQUITECTO: NECESARIO| ARCH[arquitecto\nValida diseño y riesgos]
-    ARCH_DEC -->|ARQUITECTO: NO_NECESARIO| SEARCH_DEC
-    ARCH --> SEARCH_DEC{¿Hace falta investigación externa?}
+    %% Verificación en navegador: verifier
+    BUILD_OK -->|"Sí"| UI_DEC{"6. ¿UI Verification != none?"}
+    UI_DEC -->|"No (none)"| COMMIT_ASK
+    UI_DEC -->|"Sí"| VER["verifier\nLevanta server si falta y valida flujos con playwright-cli (-s=verify)\nRevisa snapshot, console y requests; limpia sesión y server"]
 
-    SEARCH_DEC -->|Sí: API, librería, best practices o trade-off actual| WEB[buscador\nInvestiga fuentes externas]
-    SEARCH_DEC -->|No| BUILD
-    WEB --> BUILD[constructor\nImplementa y ejecuta verificaciones]
+    VER --> VER_RES{"Resultado de verifier"}
+    VER_RES -->|"VERIFIED / SKIPPED"| COMMIT_ASK
+    VER_RES -->|"BLOCKED (entorno/server)"| VER_BLOCK_ASK{"orchestrator pregunta al usuario\n(no reenvía a planner)"}
+    VER_BLOCK_ASK -->|"Re-run verifier"| VER
+    VER_BLOCK_ASK -->|"Ignore and continue to commit"| COMMIT_ASK
+    VER_BLOCK_ASK -->|"Stop here"| END_STOP
 
-    BUILD --> GIT_DEC{¿Se solicitó una acción Git?}
+    VER_RES -->|"FAILED (UI/consola/red)"| VER_FAIL_ASK{"orchestrator pregunta al usuario\n(tope: 1 ciclo de re-plan por defecto)"}
+    VER_FAIL_ASK -->|"Re-plan with planner\n(reporte + baseline modificado)"| PLAN
+    VER_FAIL_ASK -->|"Re-run verifier"| VER
+    VER_FAIL_ASK -->|"Ignore and continue to commit"| COMMIT_ASK
+    VER_FAIL_ASK -->|"Stop here"| END_STOP
 
-    GIT_DEC -->|Sí, o un agente la necesita| GIT[control-versiones\nInspecciona y ejecuta Git]
-    GIT --> GIT_RISK{¿Comando Git riesgoso?}
-    GIT_RISK -->|Sí| CONF[Consulta al usuario con comando y efecto]
-    CONF -->|Confirma| GIT_EXEC[Ejecuta comando]
-    CONF -->|No confirma| GIT_STOP[Detiene la operación]
-    GIT_RISK -->|No| GIT_EXEC
-    GIT_EXEC --> GIT_VERIFY[Verifica resultado con Git de lectura]
-    GIT_VERIFY --> SYNTH
-    GIT_STOP --> SYNTH
-    GIT_DEC -->|No| SYNTH[Sintetiza resultado para el usuario]
-
-    ORCH_GIT --> GIT
-    SYNTH --> OUT
+    %% Commit: version-control
+    COMMIT_ASK{"7. ¿Usuario aprueba commit?\n(Commit and push / Commit only / Skip)"}
+    COMMIT_ASK -->|"Skip commit"| END_OK(["Fin sin commit"])
+    COMMIT_ASK -->|"Aprobado"| VC["version-control (flash_lite)\nValida rutas sensibles e índice limpio (git diff --cached)"]
+    VC --> VC_GATE{"¿Pre-checks OK?"}
+    VC_GATE -->|"No"| VC_BLOCK(["STATUS: BLOCKED / ERROR"])
+    VC_GATE -->|"Sí"| VC_EXEC["git add -- files + git commit por tarea\n(+ git push si PUSH: yes)"]
+    VC_EXEC --> END_DONE(["Resultado final al usuario"])
 
     classDef agent fill:#e8f1fb,stroke:#2563eb,color:#111827;
     classDef decision fill:#fff7ed,stroke:#ea580c,color:#111827;
-    class PO,GEN,PLAN,ARCH,WEB,BUILD,TEST,GIT,PO_PERSIST,BO,BC agent;
-    class ROUTE,PO_STATUS,PDR,GEN_GIT,APPROVE,ARCH_DEC,SEARCH_DEC,GIT_DEC,GIT_RISK decision;
+    classDef stop fill:#fef2f2,stroke:#dc2626,color:#111827;
+    class ORCH,PLAN,BO,AGY,VER,VC,TEST,TEST_BUILD,VC_EXEC agent;
+    class ENTRY,PLAN_GATE,PLAN_AMB,APPROVE,TASK_RES,BUILD_OK,BUILD_FAIL_ASK,UI_DEC,VER_RES,VER_BLOCK_ASK,VER_FAIL_ASK,COMMIT_ASK,VC_GATE,TEST_SCOPE decision;
+    class PLAN_BLOCK,END_STOP,VC_BLOCK stop;
 ```
 
 ## Lectura fiel del flujo
 
-- `orquestador` coordina seis subagentes (`product-owner`, `planificador`,
-  `arquitecto`, `buscador`, `constructor` y `control-versiones`) y no ejecuta
-  comandos directamente.
-- `product-owner` siempre precede a `planificador` en el flujo especializado.
-- `planificador` exige `project-mapper` antes del análisis.
-- El usuario debe aprobar el plan antes de arquitectura, búsqueda o construcción.
-- `arquitecto` solo participa cuando el planificador marca
-  `ARQUITECTO: NECESARIO`.
-- `buscador` solo participa cuando se necesita información externa.
-- `constructor` (`implementador.md`) implementa y verifica, pero no gestiona Git.
-- `tester` es un agente primario independiente que valida la implementación en
-  la carpeta aislada `.tester/tests/`; no forma parte del flujo del
-  `orquestador`.
-- `control-versiones` es el agente que puede ejecutar Git. Consulta al usuario
-  antes de comandos que cambien índice, historial, ramas, archivos o remotos.
-- `general` es un agente primario con una ruta independiente para tareas de
-  análisis, implementación, diagnóstico y validación autónomas. Permite Git de
-  lectura y bloquea Git de escritura.
+- **`orchestrator`** es el único coordinador principal (`mainAgent: true`, `subagent: false`): no inspecciona código, no escribe planes ni edita archivos del proyecto (solo inicializa `<artifact-dir>/workers-status.md`). Coordina a `planner`, `build-orquestor-cli`, `verifier` y `version-control`, y vigila demoras sin respuesta mediante un watchdog (`schedule` de `300s`/`780s` + `manage_subagents`).
+- **`planner`** exige pre-flight con `rag-json` (o `project-mapper-simple` como fallback solo si `rag-json` no está disponible y el mapa tiene `<= 150` archivos y `<= 40 KB`); si no, aborta con `🚫 BLOCKED`. Divide el plan en tareas con `Writable files` disjuntos, `Depends on`, `Complexity`, `Commit` y `UI Verification`. Ante fallos de build o de `verifier`, hace **re-planificación incremental** sobre los archivos ya modificados.
+- **`build-orquestor-cli`** (`model: flash`) nunca edita código directamente: lanza hasta 5 workers `agy` CLI en paralelo (`--sandbox`, `--output-format json`) para tareas independientes, vigila progreso re-armando `schedule` (`600s`) + `manage_task` mientras queden workers corriendo, reintenta una vez en `FAILED` con un modelo superior y solo ejecuta `Final Checks` si todas las tareas terminan `✅ DONE`.
+- **`verifier`** valida flujos web/UI en vivo con `playwright-cli` (`playwright-cli.cmd` en PowerShell de Windows, sesión `-s=verify`), revisando `snapshot`, `console` y `requests`, guardando capturas en `<artifact-dir>` y cerrando siempre sesión y servidor al finalizar. Es de solo lectura sobre el código del repositorio y distingue `FAILED` (re-planificable en `planner` con tope de 1 ciclo por defecto) de `BLOCKED` (problema de entorno/servidor que resuelve el usuario).
+- **`version-control`** (`control-versiones.md`, `model: flash_lite`) solo actúa tras aprobación explícita del usuario y recibe un manifiesto `COMMITS` + `PUSH`. Bloquea si detecta archivos sensibles o cambios ya en staging (`git diff --cached --name-only`).
+- **`test`** es un agente independiente (no forma parte del pipeline de `orchestrator`) especializado en diseñar, configurar y ejecutar suites permanentes en `test/unit-test/`, `test/e2e/` (`playwright@latest`) y `test/results/`, apoyado en `project-mapper-simple`, `rag-json` y el MCP `ui-skills`.
 
 ## Fuentes
 
-- `general/opencode/.opencode/agent/orquestador.md`
-- `general/opencode/.opencode/agent/general.md`
-- `general/opencode/.opencode/agent/product-owner.md`
-- `general/opencode/.opencode/agent/planificador.md`
-- `general/opencode/.opencode/agent/arquitecto.md`
-- `general/opencode/.opencode/agent/buscador.md`
-- `general/opencode/.opencode/agent/implementador.md`
-- `general/opencode/.opencode/agent/build-orquestor.md`
-- `general/opencode/.opencode/agent/build-constructor.md`
-- `general/opencode/.opencode/agent/tester.md`
-- `general/opencode/.opencode/agent/control-versiones.md`
+- `general/gemini/.gemini/config/agents/orchestrator.md`
+- `general/gemini/.gemini/config/agents/planner.md`
+- `general/gemini/.gemini/config/agents/build-orquestor-cli.md`
+- `general/gemini/.gemini/config/agents/verifier.md`
+- `general/gemini/.gemini/config/agents/control-versiones.md`
+- `general/gemini/.gemini/config/agents/test.md`

@@ -6,6 +6,8 @@ tools:
   - invoke_subagent
   - send_message
   - write_file
+  - schedule
+  - manage_subagents
 mainAgent: true
 subagent: false
 model: inherit
@@ -39,7 +41,7 @@ Coordinate the workflow between the user, `planner`, `build-orquestor-cli`, `ver
        - **Loop guard:** allow at most **1** `verifier`-triggered re-plan cycle per request by default; if `verifier` returns `FAILED` again after a corrective cycle, highlight the recurring failure and recommend `Stop here` (with `Ignore and continue to commit` only if the user explicitly overrides).
        - On `Re-plan with planner`: send to `planner` via `send_message` (or `invoke_subagent`) **both** the full `verifier` failure report **and** the list of already-completed tasks and modified files on disk so `planner` produces an **incremental** corrective plan, then return to step 3.
 7. **Commit (only after full success — all tasks `DONE`, `Final Checks` passed, and `verifier` `VERIFIED`/`SKIPPED` or explicitly overridden by user):**
-   - Assemble the proposed commit list using each task's `Commit:` message from the approved plan paired with the verified `Files:` reported by `build-orquestor-cli`.
+   - Assemble the proposed commit list using each task's `Commit:` message from the approved plan (consolidating tasks completed across both the initial plan and any incremental corrective plan) paired with the verified `Files:` reported by `build-orquestor-cli`.
    - Present the table (`task → message → files`) and ask once via `ask_question` with options: `Commit and push`, `Commit only`, `Skip commit`.
    - Never commit or push without explicit approval. If approved (`Commit and push` or `Commit only`), invoke `version-control` via `invoke_subagent` passing only the manifest:
      ```text
@@ -48,3 +50,11 @@ Coordinate the workflow between the user, `planner`, `build-orquestor-cli`, `ver
      PUSH: yes | no
      ```
    - Relay the `version-control` result to the user. If `version-control` reports `STATUS: ERROR` or `BLOCKED` mid-sequence, clearly report which commits were already created vs. which failed.
+
+## Watchdog (No-Response Check)
+
+Whenever invoking a subagent (`invoke_subagent`), pair it with a one-shot `schedule` timer using `TimerCondition: "<conversationId>"` so the timer auto-cancels if the subagent replies in time (`DurationSeconds: 300` for `planner`, `verifier`, and `version-control`; `780` for `build-orquestor-cli` so its own `600s` worker watchdog acts first).
+- If the timer fires with no response:
+  1. Check live subagent state with `manage_subagents` (`Action: list`).
+  2. Send a `send_message` to the subagent requesting a status/progress update and set one short follow-up timer (`DurationSeconds: 120`, `TimerCondition: "<conversationId>"`).
+  3. If it still has not responded after the follow-up timer, ask the user via `ask_question` (`Wait longer`, `Kill & retry subagent`, `Stop here`) and use `manage_subagents` (`Action: kill`) if the user chooses to abort or retry.

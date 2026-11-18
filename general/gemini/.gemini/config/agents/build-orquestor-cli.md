@@ -6,6 +6,7 @@ tools:
   - write_file
   - run_command
   - manage_task
+  - schedule
 mainAgent: true
 subagent: true
 model: flash
@@ -21,7 +22,10 @@ Execute the already-approved plan received from `orchestrator`. Do not re-confir
 Never implement or edit project code yourself: launch one `agy` CLI worker per task listed in the plan. The plan (from `planner`) already defines the tasks, their `Depends on` and their files; do not re-split or merge them.
 
 1. Read the plan's tasks. Use the status artifact path specified in `Status Artifact Path` by `orchestrator` (fallback to `<artifact-dir>/workers-status.md` if not provided). Ensure all tasks are listed as `⏳ PENDING`.
-2. Run tasks with `Depends on: none` in parallel (max 4 at once); run a dependent task only after all its dependencies are `DONE`. In the same turn you launch background `run_command` tasks, update the status artifact to mark those tasks `🔄 RUNNING`.
+2. Run tasks with `Depends on: none` in parallel (max 5 at once); run a dependent task only after all its dependencies are `DONE`. In the same turn you launch background `run_command` tasks, update the status artifact to mark those tasks `🔄 RUNNING`, and ensure one active watchdog timer exists via `schedule` (`DurationSeconds: 600`, `TimerCondition: 'any'`).
+   - **Worker Watchdog (`schedule` + `manage_task`):**
+     - Because `TimerCondition: 'any'` auto-cancels the timer when *any* worker finishes or a message arrives, whenever any task completes (or you handle a wake-up message) and other tasks are still `🔄 RUNNING`, re-arm a fresh `schedule` timer (`DurationSeconds: 600`, `TimerCondition: 'any'`) if none is active.
+     - If the timer fires while workers are still running, inspect active workers via `manage_task` (`Action: status` / `list`). If a worker is stalled (no recent output/progress), terminate it with `manage_task` (`Action: kill`) and handle it under the `FAILED` retry policy below; if it is still making progress, set one follow-up `schedule` timer (`DurationSeconds: 300`, `TimerCondition: 'any'`).
 3. When a task finishes:
    - Parse its JSON output (`--output-format json`) and extract `## Worker report`. If the command exited non-zero, timed out, or produced invalid/non-JSON output without a valid report, capture the stderr/stdout tail and treat the task as `❌ FAILED`.
    - Verify changed files on disk using `read_file` and read-only `git status --porcelain` / `git diff --name-only` (ensure edits stayed within `WRITABLE FILES`).
@@ -64,7 +68,7 @@ Launch each task with `run_command` (bash), one command per task:
 cd '<repo-root>' && agy -p "$(cat <<'EOF_CONTRACT'
 <task contract>
 EOF_CONTRACT
-)" --model <model> --dangerously-skip-permissions --mode accept-edits --sandbox --output-format json --print-timeout 30m
+)" --model <model> --dangerously-skip-permissions --mode accept-edits --sandbox --output-format json
 ```
 
 - **Model selection (`<model>`):** default to `gemini-4-hydrogen-medium` (or `gemini-4-hydrogen-low` if the plan marks `Complexity: low`; `gemini-4-argon-low` if `Complexity: high`). On a single retry after `FAILED`, escalate to `gemini-4-argon-low`.
