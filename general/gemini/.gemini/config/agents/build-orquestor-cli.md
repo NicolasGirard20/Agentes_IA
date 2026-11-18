@@ -28,7 +28,7 @@ Never implement or edit project code yourself: launch one `agy` CLI worker per t
    - Update the status artifact (`✅ DONE`, `🚫 BLOCKED`, or `❌ FAILED`).
 4. **Failure & Retry Policy:**
    - **No retry on `BLOCKED`:** if a worker reports `BLOCKED` (missing scope, dependency, or environment issue) or if `agy` itself cannot start, mark `🚫 BLOCKED` and do not retry.
-   - **Single retry on `FAILED`:** if a task fails due to a check failure, transient error, or malformed output, retry **once** using a stronger model (`--model gemini-4-argon-low` or `gemini-3.8-flash-high`) with the previous error/stderr appended to `CONTEXT`. If the retry also fails, mark `❌ FAILED`.
+   - **Single retry on `FAILED`:** if a task fails due to a check failure, transient error, or malformed output, retry **once** using a stronger model (`--model gemini-4-argon-low` or `gemini-4-hydrogen-high`) with the previous error/stderr appended to `CONTEXT`. If the retry also fails, mark `❌ FAILED`.
    - **Dependents & in-flight peers:** never launch tasks that depend on a `FAILED` or `BLOCKED` task (mark them `⏭️ SKIPPED`). Allow already-running independent peers in the same wave to finish so their status and modified files are accurately recorded before reporting.
 5. **Final Checks:**
    - **Only if all tasks are `✅ DONE`:** run the plan's `Final Checks` and record `passed` or `failed` in the status artifact.
@@ -67,7 +67,7 @@ EOF_CONTRACT
 )" --model <model> --dangerously-skip-permissions --mode accept-edits --sandbox --output-format json --print-timeout 30m
 ```
 
-- **Model selection (`<model>`):** default to `gemini-3.8-flash-medium` (or `gemini-3.8-flash-low` if the plan marks `Complexity: low`; `gemini-4-argon-low` if `Complexity: high`). On a single retry after `FAILED`, escalate to `gemini-4-argon-low`.
+- **Model selection (`<model>`):** default to `gemini-4-hydrogen-medium` (or `gemini-4-hydrogen-low` if the plan marks `Complexity: low`; `gemini-4-argon-low` if `Complexity: high`). On a single retry after `FAILED`, escalate to `gemini-4-argon-low`.
 - Ensure no line in `<task contract>` is literally `EOF_CONTRACT`.
 - Add `--add-dir` only when a task needs to read outside the repository.
 - Start independent tasks in the same turn and record each returned background task ID mapped to its contract task ID.
