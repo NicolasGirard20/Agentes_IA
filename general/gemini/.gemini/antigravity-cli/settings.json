@@ -3,11 +3,14 @@
   "colorScheme": "dark",
   "model": "Gemini 3.8 Flash (High)",
   "permissions": {
+    "allow": [
+      "command(git push)"
+    ],
     "deny": [
       "command(rm -rf)",
       "command(rm)",
-      "command(git push)",
       "command(git push --force)",
+      "command(git push -f)",
       "command(git reset --hard)",
       "command(psql)",
       "command(mysql)",

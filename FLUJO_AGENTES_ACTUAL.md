@@ -46,48 +46,60 @@ flowchart TD
     BUILD_FAIL_ASK -->|"Re-plan with planner (incremental)"| PLAN
     BUILD_FAIL_ASK -->|"Stop here"| END_STOP(["Fin sin commit"])
 
-    %% Verificación en navegador: verifier
+    %% Selección interactiva post-build
     BUILD_OK -->|"Sí"| UI_DEC{"6. ¿UI Verification != none?"}
     UI_DEC -->|"No (none)"| COMMIT_ASK
-    UI_DEC -->|"Sí"| VER["verifier\nLevanta server si falta y valida flujos con playwright-cli (-s=verify)\nRevisa snapshot, console y requests; limpia sesión y server"]
+    UI_DEC -->|"Sí"| ORDER_ASK{"Elección interactiva del usuario\n¿Qué invocar primero?"}
+    ORDER_ASK -->|"Verifier primero (Recomendado)"| VER
+    ORDER_ASK -->|"Control-versiones primero"| COMMIT_ASK
+    ORDER_ASK -->|"Finalizar sin verificar ni commitear"| END_OK(["Fin sin commit"])
 
+    %% Verificación en navegador: verifier
+    VER["verifier\nLevanta server si falta y valida flujos con playwright-cli (-s=verify)\nRevisa snapshot, console y requests; limpia sesión y server"]
     VER --> VER_RES{"Resultado de verifier"}
-    VER_RES -->|"VERIFIED / SKIPPED"| COMMIT_ASK
+    VER_RES -->|"VERIFIED / SKIPPED"| POST_VER_COMMIT{"¿Quedan tareas sin commitear?"}
+    POST_VER_COMMIT -->|"Sí"| COMMIT_ASK
+    POST_VER_COMMIT -->|"No (ya commiteado)"| END_DONE(["Resultado final al usuario"])
+
     VER_RES -->|"BLOCKED (entorno/server)"| VER_BLOCK_ASK{"orchestrator pregunta al usuario\n(no reenvía a planner)"}
     VER_BLOCK_ASK -->|"Re-run verifier"| VER
-    VER_BLOCK_ASK -->|"Ignore and continue to commit"| COMMIT_ASK
+    VER_BLOCK_ASK -->|"Ignore and continue to commit\n(si faltan commits)"| COMMIT_ASK
     VER_BLOCK_ASK -->|"Stop here"| END_STOP
 
     VER_RES -->|"FAILED (UI/consola/red)"| VER_FAIL_ASK{"orchestrator pregunta al usuario\n(tope: 1 ciclo de re-plan por defecto)"}
-    VER_FAIL_ASK -->|"Re-plan with planner\n(reporte + baseline modificado)"| PLAN
+    VER_FAIL_ASK -->|"Re-plan with planner\n(reporte + estado committedTasks)"| PLAN
     VER_FAIL_ASK -->|"Re-run verifier"| VER
-    VER_FAIL_ASK -->|"Ignore and continue to commit"| COMMIT_ASK
+    VER_FAIL_ASK -->|"Ignore and continue to commit\n(si faltan commits)"| COMMIT_ASK
     VER_FAIL_ASK -->|"Stop here"| END_STOP
 
-    %% Commit: version-control
-    COMMIT_ASK{"7. ¿Usuario aprueba commit?\n(Commit and push / Commit only / Skip)"}
-    COMMIT_ASK -->|"Skip commit"| END_OK(["Fin sin commit"])
-    COMMIT_ASK -->|"Aprobado"| VC["version-control (flash_lite)\nValida rutas sensibles e índice limpio (git diff --cached)"]
+    %% Commit y push: version-control
+    COMMIT_ASK{"7. ¿Usuario aprueba commit?\n(Commit and push / Commit only / Skip)\nSolo tareas no commiteadas"}
+    COMMIT_ASK -->|"Skip commit"| END_OK
+    COMMIT_ASK -->|"Aprobado"| VC["version-control (flash_lite, eager)\nValida rutas sensibles e índice limpio (git diff --cached)"]
     VC --> VC_GATE{"¿Pre-checks OK?"}
     VC_GATE -->|"No"| VC_BLOCK(["STATUS: BLOCKED / ERROR"])
-    VC_GATE -->|"Sí"| VC_EXEC["git add -- files + git commit por tarea\n(+ git push si PUSH: yes)"]
-    VC_EXEC --> END_DONE(["Resultado final al usuario"])
+    VC_GATE -->|"Sí"| VC_EXEC["git add -- files + git commit por tarea\n(+ git push o git push -u origin HEAD si PUSH: yes)"]
+    VC_EXEC --> POST_VC{"¿UI Verification != none y\nverifier aún no corrió?"}
+    POST_VC -->|"No"| END_DONE
+    POST_VC -->|"Sí"| POST_VC_ASK{"¿Ejecutar verifier ahora?"}
+    POST_VC_ASK -->|"Ejecutar verifier ahora"| VER
+    POST_VC_ASK -->|"Finalizar aquí"| END_DONE
 
     classDef agent fill:#e8f1fb,stroke:#2563eb,color:#111827;
     classDef decision fill:#fff7ed,stroke:#ea580c,color:#111827;
     classDef stop fill:#fef2f2,stroke:#dc2626,color:#111827;
     class ORCH,PLAN,BO,AGY,VER,VC,TEST,TEST_BUILD,VC_EXEC agent;
-    class ENTRY,PLAN_GATE,PLAN_AMB,APPROVE,TASK_RES,BUILD_OK,BUILD_FAIL_ASK,UI_DEC,VER_RES,VER_BLOCK_ASK,VER_FAIL_ASK,COMMIT_ASK,VC_GATE,TEST_SCOPE decision;
+    class ENTRY,PLAN_GATE,PLAN_AMB,APPROVE,TASK_RES,BUILD_OK,BUILD_FAIL_ASK,UI_DEC,ORDER_ASK,POST_VER_COMMIT,VER_RES,VER_BLOCK_ASK,VER_FAIL_ASK,COMMIT_ASK,VC_GATE,POST_VC,POST_VC_ASK,TEST_SCOPE decision;
     class PLAN_BLOCK,END_STOP,VC_BLOCK stop;
 ```
 
 ## Lectura fiel del flujo
 
-- **`orchestrator`** es el único coordinador principal (`mainAgent: true`, `subagent: false`): no inspecciona código, no escribe planes ni edita archivos del proyecto (solo inicializa `<artifact-dir>/workers-status.md`). Coordina a `planner`, `build-orquestor-cli`, `verifier` y `version-control`, y vigila demoras sin respuesta mediante un watchdog (`schedule` de `300s`/`780s` + `manage_subagents`).
-- **`planner`** exige pre-flight con `rag-json` (o `project-mapper-simple` como fallback solo si `rag-json` no está disponible y el mapa tiene `<= 150` archivos y `<= 40 KB`); si no, aborta con `🚫 BLOCKED`. Divide el plan en tareas con `Writable files` disjuntos, `Depends on`, `Complexity`, `Commit` y `UI Verification`. Ante fallos de build o de `verifier`, hace **re-planificación incremental** sobre los archivos ya modificados.
+- **`orchestrator`** es el único coordinador principal (`mainAgent: true`, `subagent: false`): no inspecciona código, no escribe planes ni edita archivos del proyecto (solo inicializa `<artifact-dir>/workers-status.md`). Coordina a `planner`, `build-orquestor-cli`, `verifier` y `version-control`, y vigila demoras sin respuesta mediante un watchdog (`schedule` de `300s`/`780s` + `manage_subagents`). Cuando `build-orquestor-cli` finaliza todas las tareas con éxito y `UI Verification != none`, pregunta al usuario de forma interactiva si prefiere ejecutar primero `verifier` o `control-versiones` (`version-control`), y lleva control de `committedTasks` para que un eventual re-plan posterior de `verifier` solo commitee los cambios delta nuevos.
+- **`planner`** exige pre-flight con `rag-json` (o `project-mapper-simple` como fallback solo si `rag-json` no está disponible y el mapa tiene `<= 150` archivos y `<= 40 KB`); si no, aborta con `🚫 BLOCKED`. Divide el plan en tareas con `Writable files` disjuntos, `Depends on`, `Complexity`, `Commit` y `UI Verification`. Ante fallos de build o de `verifier`, hace **re-planificación incremental** sobre los archivos ya modificados (respetando las tareas ya commiteadas).
 - **`build-orquestor-cli`** (`model: flash`) nunca edita código directamente: lanza hasta 5 workers `agy` CLI en paralelo (`--sandbox`, `--output-format json`) para tareas independientes, vigila progreso re-armando `schedule` (`600s`) + `manage_task` mientras queden workers corriendo, reintenta una vez en `FAILED` con un modelo superior y solo ejecuta `Final Checks` si todas las tareas terminan `✅ DONE`.
 - **`verifier`** valida flujos web/UI en vivo con `playwright-cli` (`playwright-cli.cmd` en PowerShell de Windows, sesión `-s=verify`), revisando `snapshot`, `console` y `requests`, guardando capturas en `<artifact-dir>` y cerrando siempre sesión y servidor al finalizar. Es de solo lectura sobre el código del repositorio y distingue `FAILED` (re-planificable en `planner` con tope de 1 ciclo por defecto) de `BLOCKED` (problema de entorno/servidor que resuelve el usuario).
-- **`version-control`** (`control-versiones.md`, `model: flash_lite`) solo actúa tras aprobación explícita del usuario y recibe un manifiesto `COMMITS` + `PUSH`. Bloquea si detecta archivos sensibles o cambios ya en staging (`git diff --cached --name-only`).
+- **`version-control`** (`control-versiones.md`, `model: flash_lite`, `commandExecutionPolicy: eager`) solo actúa tras aprobación explícita del usuario y recibe un manifiesto `COMMITS` + `PUSH`. Bloquea si detecta archivos sensibles o cambios ya en staging (`git diff --cached --name-only`). Soporta PowerShell y Bash para los commits y, cuando `PUSH: yes`, valida que no haya `detached HEAD`, detecta si existe upstream (`@{u}`) y ejecuta `git push` o `git push -u origin HEAD` (respaldado por `permissions.allow: ["command(git push)"]` y manteniendo `--force` / `-f` bloqueados en `permissions.deny` dentro de `settings.json`).
 - **`test`** es un agente independiente (no forma parte del pipeline de `orchestrator`) especializado en diseñar, configurar y ejecutar suites permanentes en `test/unit-test/`, `test/e2e/` (`playwright@latest`) y `test/results/`, apoyado en `project-mapper-simple`, `rag-json` y el MCP `ui-skills`.
 
 ## Fuentes
@@ -98,3 +110,4 @@ flowchart TD
 - `general/gemini/.gemini/config/agents/verifier.md`
 - `general/gemini/.gemini/config/agents/control-versiones.md`
 - `general/gemini/.gemini/config/agents/test.md`
+- `general/gemini/.gemini/antigravity-cli/settings.json`
