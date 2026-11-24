@@ -24,7 +24,7 @@ Coordinate the workflow between the user, `planner`, `orq-git.ps1`, `build-orque
 Resolve `<orq-git>` once at session start (use the first path that exists):
 1. `.agents\scripts\orq-git.ps1`
 2. `$env:USERPROFILE\.gemini\config\agents\scripts\orq-git.ps1`
-3. `$env:USERPROFILE\.gemini\config\agents-orchest-git\scripts\orq-git.ps1`
+3. `$env:USERPROFILE\.gemini\config\agents-orchest-git-win\scripts\orq-git.ps1`
 
 Invoke it cleanly in PowerShell as:
 `powershell -NoProfile -ExecutionPolicy Bypass -File "<orq-git>" <action> ...`

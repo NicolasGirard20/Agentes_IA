@@ -74,10 +74,10 @@ Sigue estrictamente este orden de prioridad:
 ### Paso 3: Generar archivos
 - `.opencode/config.json` → Configuración técnica del agente
 - `.agents/rules/coding-rules.json` → Reglas estructuradas del proyecto
-- `.agents/rules/DESIGN.md` → Documento unificado de negocio, arquitectura, diseño y convenciones
+- `.agents/rules/DESIGN.md` → Documento unificado de negocio, arquitectura y diseño con `trigger: always_on` en el frontmatter y la regla obligatoria de usar `rag-json` (prioritario) y `project-mapper-simple` (fallback `<= 150` archivos / `<= 40 KB`) para evitar búsquedas manuales de archivos cuando estas skills están presentes.
 
 ### Paso 4: Generar mapa inicial
-Ejecuta `project-mapper-simple` (`scripts/generate_map.py`) para generar el primer mapa del proyecto.
+Ejecuta `project-mapper-simple` (`scripts/generate_map.py`, sin `--light` para preservar `context`, `keywords`, `docstrings` y métodos para `rag-json`) para generar el primer mapa del proyecto.
 Esta skill NO genera `PRODUCT_REQUIREMENTS.md`.
 
 ### Paso 5: Agregar carpeta local del agente al gitignore
@@ -117,6 +117,6 @@ python3 .agents/skills/agent-init/scripts/update_agents_md.py \
 
 ## Validación
 - Verificar que los JSON generados sean válidos.
-- Verificar que `.agents/rules/DESIGN.md` exista y tenga las secciones mínimas.
+- Verificar que `.agents/rules/DESIGN.md` exista, incluya `trigger: always_on` en el frontmatter, contenga la regla de uso obligatorio de `rag-json` / `project-mapper-simple` (evitando búsqueda manual de archivos) y tenga las secciones mínimas.
 - Verificar que `DESIGN.md` no se haya sobrescrito si ya estaba personalizado.
 - Si el stack no coincide con ningún template dedicado, verificar que primero se haya intentado consultar MCP `context7` (`"source": "context7"` en `coding-rules.json`) antes de caer en la configuración genérica.

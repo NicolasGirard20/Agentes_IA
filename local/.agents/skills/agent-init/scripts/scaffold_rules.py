@@ -5,6 +5,8 @@ import json
 import os
 import sys
 
+from generate_design import ALWAYS_ON_FRONTMATTER, DISCOVERY_RULES_SECTION, ensure_design_metadata
+
 if sys.platform == "win32":
     try:
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -139,7 +141,7 @@ def generate_design_document(stack, project_root):
     project_name = stack.get("project_name", os.path.basename(project_root))
 
     if framework in ("dotnet-mvc", "aspnet-mvc"):
-        return f"""# {project_name} — Reglas de Diseño y Arquitectura
+        return f"""{ALWAYS_ON_FRONTMATTER}# {project_name} — Reglas de Diseño y Arquitectura
 
 > Este documento es la fuente de verdad para cualquier agente o desarrollador que trabaje en este proyecto. Toda regla aquí descrita debe respetarse sin excepción.
 
@@ -189,10 +191,15 @@ El sistema está desarrollado sobre **ASP.NET MVC (.NET Framework 4.8)** utiliza
 | `.agents/init.ps1` / `init.sh` | Inicialización y verificación de estado |
 | `.agents/rules/DESIGN.md` | Guía de diseño visual y patrones de componentes |
 | `.agents/rules/FRONTEND_ENCODING.md` | Regla obligatoria de UTF-8 con BOM |
-| `.agents/skills/project-mapper-simple/` | Mapeo estructurado y filtrado de contexto |
+| `.agents/skills/rag-json/` | Búsqueda semántica prioritaria de archivos sin cargar el mapa completo |
+| `.agents/skills/project-mapper-simple/` | Mapeo estructurado del proyecto y fallback controlado |
+
+---
+
+{DISCOVERY_RULES_SECTION}
 """
 
-    md = f"""# {project_name} — Reglas de Diseño y Arquitectura
+    md = f"""{ALWAYS_ON_FRONTMATTER}# {project_name} — Reglas de Diseño y Arquitectura
 
 > Este documento es la fuente de verdad para cualquier agente o desarrollador que trabaje en este proyecto. Toda regla aquí descrita debe respetarse sin excepción. Nada de lo que no esté respaldado por el código debe suponerse ni inventarse.
 
@@ -207,16 +214,21 @@ Este proyecto cuenta con un sistema de configuración para agentes de IA. Los si
 | `.opencode/config.json` | Configuración técnica del agente: skills, triggers, rutas de scripts |
 | `.agents/init.sh` | Script de bootstrap que se ejecuta al iniciar cada sesión (genera mapa del proyecto, verifica dependencias) |
 | `.agents/rules/coding-rules.json` | Reglas de estilo y arquitectura en formato estructurado para validación automática de prompts |
-| `.agents/skills/project-mapper-simple/` | Skill local que mapea la estructura completa del proyecto y filtra contexto relevante |
+| `.agents/skills/rag-json/` | Búsqueda semántica prioritaria sobre `project_map.json` para ubicar archivos relevantes sin búsquedas manuales |
+| `.agents/skills/project-mapper-simple/` | Skill local que genera `project_map.json` y actúa como fallback cuando `rag-json` no está disponible |
 | `.agents/skills/prompt-toolkit/` | Skill local con templates de prompts parametrizables y validador de seguridad |
 
 ### Flujo de inicio de sesión
 1. El agente lee `.opencode/config.json` para conocer las skills y reglas del proyecto.
 2. Ejecuta `.agents/init.sh` que regenera el mapa del proyecto si es necesario.
 3. Consulta `.agents/rules/DESIGN.md` como fuente de verdad para reglas de negocio, stack y convenciones.
-4. Usa `.agents/rules/coding-rules.json` para validar que los prompts generados respeten las reglas del proyecto.
-5. Antes de enviar prompts críticos, los valida contra `.agents/skills/prompt-toolkit/validator/rules.json`.
+4. Para ubicar archivos, usa `rag-json` por defecto (o `project-mapper-simple` como fallback si `<= 150` archivos / `<= 40 KB`), evitando búsquedas manuales.
+5. Usa `.agents/rules/coding-rules.json` para validar que los prompts generados respeten las reglas del proyecto.
+6. Antes de enviar prompts críticos, los valida contra `.agents/skills/prompt-toolkit/validator/rules.json`.
 
+---
+
+{DISCOVERY_RULES_SECTION}
 ---
 
 ## Arquitectura General
@@ -341,7 +353,7 @@ if __name__ == "__main__":
         print("DESIGN.md ya existe; se conserva")
     elif os.path.exists(os.path.join(project_root, "AGENTS.md")):
         with open(os.path.join(project_root, "AGENTS.md"), "r", encoding="utf-8") as source:
-            legacy_document = source.read()
+            legacy_document = ensure_design_metadata(source.read())
         with open(design_path, "w", encoding="utf-8") as target:
             target.write(legacy_document)
         print("AGENTS.md migrado a DESIGN.md")

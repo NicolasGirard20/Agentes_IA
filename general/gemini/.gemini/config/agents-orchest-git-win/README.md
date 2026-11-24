@@ -1,10 +1,10 @@
-# agents-orchest-git
+# agents-orchest-git-win
 
-Flujo de agentes con **aislamiento por ramas Git + `git worktree`** y manejo determinista de Git mediante script PowerShell (`scripts/orq-git.ps1`), sin gastar tokens de LLM en operaciones rutinarias de Git.
+Flujo de agentes para **Windows (PowerShell)** con **aislamiento por ramas Git + `git worktree`** y manejo determinista de Git mediante script PowerShell (`scripts/orq-git.ps1`), sin gastar tokens de LLM en operaciones rutinarias de Git.
 
 ## Qué cambia respecto a `agents/`
 
-| Aspecto | `agents/` (original) | `agents-orchest-git/` |
+| Aspecto | `agents/` (original) | `agents-orchest-git-win/` |
 |---|---|---|
 | Carpeta de trabajo | Todos los workers comparten la misma carpeta | 1 copia aislada (`git worktree`) por tarea + 1 worktree `_int` para integración |
 | Copia principal del usuario | Se modifica directamente durante el build | Queda intacta hasta que aprobás hacer `merge` a tu rama base |
@@ -127,7 +127,7 @@ bash scripts/orq-git.sh <accion> --slug <slug> ...
 
 ## Cómo activarlo y consejos en Windows
 
-1. **Activación:** copiá el contenido de `agents-orchest-git\` en `%USERPROFILE%\.gemini\config\agents\` (o en `.agents\` de tu proyecto si querés usarlo por repo).
+1. **Activación:** copiá el contenido de `agents-orchest-git-win\` en `%USERPROFILE%\.gemini\config\agents\` (o en `.agents\` de tu proyecto si querés usarlo por repo).
 2. **Rutas largas en Windows:** recomendable activar una vez:
    ```powershell
    git config --global core.longpaths true
