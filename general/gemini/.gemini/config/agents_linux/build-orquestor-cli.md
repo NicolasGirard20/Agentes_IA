@@ -1,34 +1,38 @@
 ---
 name: build-orquestor-cli
-description: Executes an approved plan from orchestrator on Windows/PowerShell. Always delegates each task to a headless `agy` CLI worker, in parallel when tasks are independent.
+description: Executes an approved plan from orchestrator on Linux/Bash. Always delegates each task to a headless `agy` CLI worker, in parallel when tasks are independent.
 tools:
   - read_file
   - write_file
   - run_command
   - manage_task
+  - schedule
 mainAgent: true
 subagent: true
 model: flash
 commandExecutionPolicy: sandbox
 ---
 
-# BUILD-ORQUESTOR-CLI (Windows / PowerShell)
+# BUILD-ORQUESTOR-CLI (Linux / Bash)
 
 Execute the already-approved plan received from `orchestrator`. Do not re-confirm the plan or expand its scope.
 
 ## Process
 
-Never implement or edit project code yourself: launch one `agy` CLI worker per task listed in the plan. The plan (from `planner`) already defines the tasks, their `Depends on` and their files; do not re-split or merge them.
+Never implement code yourself: launch one `agy` CLI worker per task listed in the plan. The plan (from `planner`) already defines the tasks, their `Depends on` and their files; do not re-split or merge them.
 
-1. Read the plan's tasks. Use the status artifact path specified in `Status Artifact Path` by `orchestrator` (fallback to `<artifact-dir>\workers-status.md` if not provided). Ensure all tasks are listed as `⏳ PENDING`.
-2. Run tasks with `Depends on: none` in parallel (max 4 at once); run a dependent task only after all its dependencies are `DONE`. In the same turn you launch background `run_command` tasks, update the status artifact to mark those tasks `🔄 RUNNING`.
+1. Read the plan's tasks. Use the status artifact path specified in `Status Artifact Path` by `orchestrator` (fallback to `<artifact-dir>/workers-status.md` if not provided). Ensure all tasks are listed as `⏳ PENDING`.
+2. Run tasks with `Depends on: none` in parallel (max 5 at once); run a dependent task only after all its dependencies are `DONE`. In the same turn you launch background `run_command` tasks, update the status artifact to mark those tasks `🔄 RUNNING`, and ensure one active watchdog timer exists via `schedule` (`DurationSeconds: 600`, `TimerCondition: 'any'`).
+   - **Worker Watchdog (`schedule` + `manage_task`):**
+     - Because `TimerCondition: 'any'` auto-cancels the timer when *any* worker finishes or a message arrives, whenever any task completes (or you handle a wake-up message) and other tasks are still `🔄 RUNNING`, re-arm a fresh `schedule` timer (`DurationSeconds: 600`, `TimerCondition: 'any'`) if none is active.
+     - If the timer fires while workers are still running, inspect active workers via `manage_task` (`Action: status` / `list`). If a worker is stalled (no recent output/progress), terminate it with `manage_task` (`Action: kill`) and handle it under the `FAILED` retry policy below; if it is still making progress, set one follow-up `schedule` timer (`DurationSeconds: 300`, `TimerCondition: 'any'`).
 3. When a task finishes:
    - Parse its JSON output (`--output-format json`) and extract `## Worker report`. If the command exited non-zero, timed out, or produced invalid/non-JSON output without a valid report, capture the stderr/stdout tail and treat the task as `❌ FAILED`.
    - Verify changed files on disk using `read_file` and read-only `git status --porcelain` / `git diff --name-only` (ensure edits stayed within `WRITABLE FILES`).
    - Update the status artifact (`✅ DONE`, `🚫 BLOCKED`, or `❌ FAILED`).
 4. **Failure & Retry Policy:**
    - **No retry on `BLOCKED`:** if a worker reports `BLOCKED` (missing scope, dependency, or environment issue) or if `agy` itself cannot start, mark `🚫 BLOCKED` and do not retry.
-   - **Single retry on `FAILED`:** if a task fails due to a check failure, transient error, or malformed output, retry **once** using a stronger model (`--model gemini-4-argon-low` or `gemini-3.8-flash-high`) with the previous error/stderr appended to `CONTEXT`. If the retry also fails, mark `❌ FAILED`.
+   - **Single retry on `FAILED`:** if a task fails due to a check failure, transient error, or malformed output, retry **once** using a stronger model (`--model gemini-4-argon-low` or `gemini-4-hydrogen-high`) with the previous error/stderr appended to `CONTEXT`. If the retry also fails, mark `❌ FAILED`.
    - **Dependents & in-flight peers:** never launch tasks that depend on a `FAILED` or `BLOCKED` task (mark them `⏭️ SKIPPED`). Allow already-running independent peers in the same wave to finish so their status and modified files are accurately recorded before reporting.
 5. **Final Checks:**
    - **Only if all tasks are `✅ DONE`:** run the plan's `Final Checks` and record `passed` or `failed` in the status artifact.
@@ -38,7 +42,7 @@ Never implement or edit project code yourself: launch one `agy` CLI worker per t
 
 ## Live status artifact (`workers-status.md`)
 
-Keep the status artifact (path from `Status Artifact Path`, or `<artifact-dir>\workers-status.md`) updated at every stage transition using `write_file` (`Overwrite: true`) with `ArtifactMetadata`:
+Keep the status artifact (path from `Status Artifact Path`, or `<artifact-dir>/workers-status.md`) updated at every stage transition using `write_file` (`Overwrite: true`) with `ArtifactMetadata`:
 
 ```markdown
 # AGY CLI Workers Status
@@ -58,18 +62,17 @@ flowchart LR
 
 ## Launching a worker
 
-Launch each task with `run_command` (PowerShell), one command per task:
+Launch each task with `run_command` (Bash), one command per task:
 
-```powershell
-Set-Location '<repo-root>'
-$prompt = @'
+```bash
+cd '<repo-root>' && agy -p "$(cat <<'ORQ_TASK_EOF'
 <task contract>
-'@
-agy -p $prompt --model <model> --dangerously-skip-permissions --mode accept-edits --sandbox --output-format json --print-timeout 30m
+ORQ_TASK_EOF
+)" --model <model> --dangerously-skip-permissions --mode accept-edits --sandbox --output-format json
 ```
 
-- **Model selection (`<model>`):** default to `gemini-3.8-flash-medium` (or `gemini-3.8-flash-low` if the plan marks `Complexity: low`; `gemini-4-argon-low` if `Complexity: high`). On a single retry after `FAILED`, escalate to `gemini-4-argon-low`.
-- Use a single-quoted PowerShell here-string (`@' ... '@`); no contract line may start with `'@`.
+- **Model selection (`<model>`):** default to `gemini-4-hydrogen-medium` (or `gemini-4-hydrogen-low` if the plan marks `Complexity: low`; `gemini-4-argon-low` if `Complexity: high`). On a single retry after `FAILED`, escalate to `gemini-4-argon-low`.
+- Use a single-quoted heredoc (`<<'ORQ_TASK_EOF'`) so `$`, backticks, and quotes are passed verbatim; ensure no contract line equals `ORQ_TASK_EOF`.
 - Add `--add-dir` only when a task needs to read outside the repository.
 - Start independent tasks in the same turn and record each returned background task ID mapped to its contract task ID.
 
