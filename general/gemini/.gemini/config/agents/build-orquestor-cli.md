@@ -19,9 +19,9 @@ Execute the already-approved plan received from `orchestrator`. Do not re-confir
 
 ## Process
 
-Never implement or edit project code yourself: launch one `agy` CLI worker per task listed in the plan. The plan (from `planner`) already defines the tasks, their `Depends on` and their files; do not re-split or merge them.
+Never implement code yourself: launch one `agy` CLI worker per task listed in the plan. The plan (from `planner`) already defines the tasks, their `Depends on` and their files; do not re-split or merge them.
 
-1. Read the plan's tasks. Use the status artifact path specified in `Status Artifact Path` by `orchestrator` (fallback to `<artifact-dir>/workers-status.md` if not provided). Ensure all tasks are listed as `⏳ PENDING`.
+1. Read the plan's tasks. Use the status artifact path specified in `Status Artifact Path` by `orchestrator` (fallback to `<artifact-dir>\workers-status.md` if not provided). Ensure all tasks are listed as `⏳ PENDING`.
 2. Run tasks with `Depends on: none` in parallel (max 5 at once); run a dependent task only after all its dependencies are `DONE`. In the same turn you launch background `run_command` tasks, update the status artifact to mark those tasks `🔄 RUNNING`, and ensure one active watchdog timer exists via `schedule` (`DurationSeconds: 600`, `TimerCondition: 'any'`).
    - **Worker Watchdog (`schedule` + `manage_task`):**
      - Because `TimerCondition: 'any'` auto-cancels the timer when *any* worker finishes or a message arrives, whenever any task completes (or you handle a wake-up message) and other tasks are still `🔄 RUNNING`, re-arm a fresh `schedule` timer (`DurationSeconds: 600`, `TimerCondition: 'any'`) if none is active.
@@ -42,7 +42,7 @@ Never implement or edit project code yourself: launch one `agy` CLI worker per t
 
 ## Live status artifact (`workers-status.md`)
 
-Keep the status artifact (path from `Status Artifact Path`, or `<artifact-dir>/workers-status.md`) updated at every stage transition using `write_file` (`Overwrite: true`) with `ArtifactMetadata`:
+Keep the status artifact (path from `Status Artifact Path`, or `<artifact-dir>\workers-status.md`) updated at every stage transition using `write_file` (`Overwrite: true`) with `ArtifactMetadata`:
 
 ```markdown
 # AGY CLI Workers Status
@@ -62,17 +62,18 @@ flowchart LR
 
 ## Launching a worker
 
-Launch each task with `run_command` (bash), one command per task:
+Launch each task with `run_command`, one command per task:
 
-```bash
-cd '<repo-root>' && agy -p "$(cat <<'EOF_CONTRACT'
+```powershell
+Set-Location '<repo-root>'
+$prompt = @'
 <task contract>
-EOF_CONTRACT
-)" --model <model> --dangerously-skip-permissions --mode accept-edits --sandbox --output-format json
+'@
+agy -p $prompt --model <model> --dangerously-skip-permissions --mode accept-edits --sandbox --output-format json
 ```
 
 - **Model selection (`<model>`):** default to `gemini-4-hydrogen-medium` (or `gemini-4-hydrogen-low` if the plan marks `Complexity: low`; `gemini-4-argon-low` if `Complexity: high`). On a single retry after `FAILED`, escalate to `gemini-4-argon-low`.
-- Ensure no line in `<task contract>` is literally `EOF_CONTRACT`.
+- Use a single-quoted PowerShell here-string; no contract line may start with `'@`.
 - Add `--add-dir` only when a task needs to read outside the repository.
 - Start independent tasks in the same turn and record each returned background task ID mapped to its contract task ID.
 
