@@ -28,15 +28,33 @@
   .tema h2 { margin:0; font-size:17px; flex:1; }
   .prog { color:var(--mu); font-size:13px; }
   .body { padding:0 14px 14px; }
-  .item { display:flex; gap:10px; padding:10px 0; border-top:1px solid var(--bd); }
+  .item { display:flex; gap:10px; padding:10px 0; border-top:1px solid var(--bd); align-items:flex-start; }
   .item.done .tit { text-decoration:line-through; color:var(--mu); }
-  .item input[type=checkbox] { margin-top:5px; width:17px; height:17px; }
+  .item > input[type=checkbox] { margin-top:4px; width:17px; height:17px; }
   .tit { font-weight:600; }
   .desc { color:var(--mu); font-size:14px; white-space:pre-wrap; }
-  .con { font-size:13px; color:#fbbf24; margin-top:2px; white-space:pre-wrap; }
+  .mejoras { margin-top:8px; padding:8px 10px; background:#141720; border:1px solid var(--bd); border-radius:8px; }
+  .mejoras-hd { display:flex; align-items:center; justify-content:space-between; font-size:12px; font-weight:600; color:#fbbf24; margin-bottom:4px; }
+  .mejora { display:flex; align-items:flex-start; gap:7px; padding:3px 0; font-size:13px; }
+  .mejora input[type=checkbox] { margin-top:3px; width:14px; height:14px; }
+  .mejora .m-txt { flex:1; white-space:pre-wrap; cursor:text; }
+  .mejora.done .m-txt { text-decoration:line-through; color:var(--mu); }
+  .mejora .m-acts { display:flex; gap:2px; opacity:0.65; }
+  .mejora:hover .m-acts { opacity:1; }
+  .mejora .m-acts button { padding:0 5px; font-size:11px; line-height:1.4; }
+  .m-edit { display:flex; gap:4px; flex:1; }
+  .m-edit input { flex:1; padding:3px 7px; font-size:13px; }
+  .m-edit button { padding:2px 7px; font-size:12px; }
+  .add-m { display:flex; gap:6px; margin-top:6px; }
+  .add-m input { flex:1; padding:4px 8px; font-size:13px; }
+  .add-m button { padding:3px 9px; font-size:12px; }
+  .add-m-btn { margin-top:6px; padding:2px 8px; font-size:12px; color:var(--mu); border-style:dashed; }
   .acts { display:flex; gap:4px; }
   .acts button { padding:2px 8px; font-size:12px; }
   form.add { display:grid; gap:6px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--bd); }
+  form.edit { display:grid; gap:8px; flex:1; }
+  form.edit label { display:grid; gap:3px; font-size:12px; color:var(--mu); }
+  form.edit input, form.edit textarea { width:100%; font-size:14px; color:var(--tx); }
   .empty { color:var(--mu); padding:10px 0; font-style:italic; }
   .toast { position:fixed; bottom:16px; right:16px; background:var(--ok); color:#06200f; padding:8px 14px; border-radius:6px; display:none; }
   .dirty { color:var(--bad); font-size:13px; }
@@ -71,16 +89,101 @@
 <script src="data/propuestas.js"></script>
 <script>
 const KEY = 'propuestas.v1';
-let base = JSON.parse(JSON.stringify(window.PROPUESTAS || { temas: [] }));
-let saved = localStorage.getItem(KEY);
-let data = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(base));
-const collapsed = {};
 const $ = s => document.querySelector(s);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+function normalize(raw) {
+  const src = raw && Array.isArray(raw.temas) ? raw : { temas: [] };
+  return {
+    temas: src.temas.map(t => ({
+      id: t.id || uid(),
+      nombre: String(t.nombre ?? ''),
+      items: (Array.isArray(t.items) ? t.items : []).map(i => {
+        let mejoras = [];
+        if (Array.isArray(i.mejoras)) {
+          mejoras = i.mejoras
+            .map(m => typeof m === 'string'
+              ? { id: uid(), texto: m.trim(), hecho: false }
+              : { id: m.id || uid(), texto: String(m.texto ?? '').trim(), hecho: !!m.hecho })
+            .filter(m => m.texto);
+        } else if (typeof i.consideracion === 'string' && i.consideracion.trim()) {
+          mejoras = i.consideracion.split('\n').map(s => s.trim()).filter(Boolean)
+            .map(texto => ({ id: uid(), texto, hecho: false }));
+        }
+        return {
+          id: i.id || uid(),
+          titulo: String(i.titulo ?? ''),
+          descripcion: String(i.descripcion ?? ''),
+          mejoras,
+          hecho: !!i.hecho
+        };
+      })
+    }))
+  };
+}
+
+let base = normalize(window.PROPUESTAS);
+let saved = localStorage.getItem(KEY);
+let data = saved ? normalize(JSON.parse(saved)) : JSON.parse(JSON.stringify(base));
+const collapsed = {};
+let editingId = null;
+let addingMejoraId = null;
+let editingMejora = null;
+
 function save() { localStorage.setItem(KEY, JSON.stringify(data)); render(); }
 function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 2200); }
+
+function openEdit(id, field = 'titulo') {
+  editingId = id;
+  render();
+  const el = $(`#app .item[data-i="${CSS.escape(id)}"] [name="${field}"]`);
+  if (el) { el.focus(); const len = el.value.length; el.setSelectionRange?.(len, len); }
+}
+
+function openAddMejora(id) {
+  addingMejoraId = id;
+  render();
+  const el = $(`#app .item[data-i="${CSS.escape(id)}"] form.add-m input[name="texto"]`);
+  if (el) el.focus();
+}
+
+function openEditMejora(itemId, mejoraId) {
+  editingMejora = { itemId, mejoraId };
+  render();
+  const el = $(`#app .item[data-i="${CSS.escape(itemId)}"] .mejora[data-m="${CSS.escape(mejoraId)}"] input[name="texto"]`);
+  if (el) { el.focus(); const len = el.value.length; el.setSelectionRange?.(len, len); }
+}
+
+function renderMejoras(i) {
+  const showBox = i.mejoras.length > 0 || addingMejoraId === i.id;
+  if (!showBox) {
+    return `<button type="button" class="add-m-btn" data-act="openM">+ Mejora</button>`;
+  }
+  const doneM = i.mejoras.filter(m => m.hecho).length;
+  return `<div class="mejoras">
+    <div class="mejoras-hd"><span>Mejoras${i.mejoras.length ? ` (${doneM}/${i.mejoras.length})` : ''}</span></div>
+    ${i.mejoras.map(m => `<div class="mejora ${m.hecho ? 'done' : ''}" data-m="${m.id}">
+      <input type="checkbox" data-act="chkM" ${m.hecho ? 'checked' : ''}>
+      ${editingMejora && editingMejora.itemId === i.id && editingMejora.mejoraId === m.id
+        ? `<form class="m-edit" data-act="saveM">
+            <input name="texto" value="${esc(m.texto)}" required>
+            <button type="submit" class="pri">✓</button>
+            <button type="button" data-act="cancelM">✕</button>
+          </form>`
+        : `<span class="m-txt" title="Doble click para editar">${esc(m.texto)}</span>
+          <span class="m-acts">
+            <button type="button" data-act="edM" title="Editar mejora">✎</button>
+            <button type="button" class="del" data-act="delM" title="Borrar mejora">✕</button>
+          </span>`}
+    </div>`).join('')}
+    <form class="add-m" data-act="addM">
+      <input name="texto" placeholder="Agregar mejora…" required>
+      <button type="submit">+ Agregar</button>
+      ${i.mejoras.length === 0 ? `<button type="button" data-act="closeM" title="Cancelar">✕</button>` : ''}
+    </form>
+  </div>`;
+}
 
 function render() {
   const q = $('#q').value.toLowerCase(), f = $('#f').value;
@@ -89,7 +192,7 @@ function render() {
     const done = t.items.filter(i => i.hecho).length;
     const vis = t.items.filter(i =>
       (f === 'all' || (f === 'hecho') === i.hecho) &&
-      (!q || (i.titulo + i.descripcion + i.consideracion + t.nombre).toLowerCase().includes(q)));
+      (!q || (i.titulo + ' ' + i.descripcion + ' ' + i.mejoras.map(m => m.texto).join(' ') + ' ' + t.nombre).toLowerCase().includes(q)));
     return `<section class="tema" data-t="${t.id}">
       <header data-act="toggle">
         <span>${collapsed[t.id] ? '▸' : '▾'}</span>
@@ -100,15 +203,19 @@ function render() {
       ${collapsed[t.id] ? '' : `<div class="body">
         ${vis.length ? vis.map(i => `<div class="item ${i.hecho ? 'done' : ''}" data-i="${i.id}">
           <input type="checkbox" data-act="chk" ${i.hecho ? 'checked' : ''}>
-          <div style="flex:1"><div class="tit">${esc(i.titulo)}</div>
-            ${i.descripcion ? `<div class="desc">${esc(i.descripcion)}</div>` : ''}
-            ${i.consideracion ? `<div class="con">⚠ ${esc(i.consideracion)}</div>` : ''}</div>
-          <div class="acts"><button data-act="ed">Editar</button><button data-act="mv">Mover</button><button class="del" data-act="del">✕</button></div>
+          ${editingId === i.id ? `<form class="edit" data-act="saveEd">
+            <label>Título<input name="titulo" value="${esc(i.titulo)}" required></label>
+            <label>Descripción<textarea name="descripcion" rows="3" placeholder="Descripción (opcional)">${esc(i.descripcion)}</textarea></label>
+            <div class="acts"><button type="submit" class="pri">Guardar</button><button type="button" data-act="cancelEd">Cancelar</button></div>
+          </form>` : `<div style="flex:1;min-width:0"><div class="tit" title="Doble click para editar">${esc(i.titulo)}</div>
+            ${i.descripcion ? `<div class="desc" title="Doble click para editar">${esc(i.descripcion)}</div>` : ''}
+            ${renderMejoras(i)}</div>
+          <div class="acts"><button data-act="ed">Editar</button><button data-act="mv">Mover</button><button class="del" data-act="del">✕</button></div>`}
         </div>`).join('') : '<div class="empty">Sin propuestas.</div>'}
         <form class="add" data-act="add">
           <input name="titulo" placeholder="Nueva propuesta…" required>
           <textarea name="descripcion" rows="2" placeholder="Descripción (opcional)"></textarea>
-          <input name="consideracion" placeholder="Consideración (opcional)">
+          <textarea name="mejoras" rows="2" placeholder="Mejoras (opcional, una por línea)"></textarea>
           <div><button class="pri">+ Agregar propuesta</button></div>
         </form></div>`}
     </section>`;
@@ -119,28 +226,104 @@ $('#app').addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b || b.tagName === 'FORM') return;
   const sec = e.target.closest('.tema'), t = data.temas.find(x => x.id === sec.dataset.t);
   const row = e.target.closest('.item'), it = row && t.items.find(x => x.id === row.dataset.i);
+  const mRow = e.target.closest('.mejora'), m = mRow && it && it.mejoras.find(x => x.id === mRow.dataset.m);
   switch (b.dataset.act) {
     case 'toggle': if (e.target.closest('.acts')) return; collapsed[t.id] = !collapsed[t.id]; render(); break;
     case 'renT': { const n = prompt('Nombre del tema:', t.nombre); if (n && n.trim()) { t.nombre = n.trim(); save(); } break; }
-    case 'delT': if (confirm(`¿Borrar el tema "${t.nombre}" y sus ${t.items.length} propuestas?`)) { data.temas = data.temas.filter(x => x !== t); save(); } break;
+    case 'delT': if (confirm(`¿Borrar el tema "${t.nombre}" y sus ${t.items.length} propuestas?`)) {
+      if (editingId && t.items.some(x => x.id === editingId)) editingId = null;
+      if (addingMejoraId && t.items.some(x => x.id === addingMejoraId)) addingMejoraId = null;
+      if (editingMejora && t.items.some(x => x.id === editingMejora.itemId)) editingMejora = null;
+      data.temas = data.temas.filter(x => x !== t); save();
+    } break;
     case 'chk': it.hecho = e.target.checked; save(); break;
-    case 'ed': {
-      const ti = prompt('Título:', it.titulo); if (ti === null) return;
-      const de = prompt('Descripción:', it.descripcion); if (de === null) return;
-      const co = prompt('Consideración:', it.consideracion); if (co === null) return;
-      Object.assign(it, { titulo: ti.trim() || it.titulo, descripcion: de, consideracion: co }); save(); break; }
+    case 'ed': openEdit(it.id, 'titulo'); break;
+    case 'cancelEd': editingId = null; render(); break;
+    case 'openM': openAddMejora(it.id); break;
+    case 'closeM': addingMejoraId = null; render(); break;
+    case 'chkM': m.hecho = e.target.checked; save(); break;
+    case 'edM': openEditMejora(it.id, m.id); break;
+    case 'cancelM': editingMejora = null; render(); break;
+    case 'delM':
+      if (editingMejora && editingMejora.mejoraId === m.id) editingMejora = null;
+      it.mejoras = it.mejoras.filter(x => x !== m);
+      if (it.mejoras.length === 0 && addingMejoraId === it.id) addingMejoraId = null;
+      save();
+      break;
     case 'mv': {
       const opts = data.temas.map((x, n) => `${n + 1}. ${x.nombre}`).join('\n');
       const n = parseInt(prompt('Mover a tema (número):\n' + opts), 10) - 1;
       if (data.temas[n] && data.temas[n] !== t) { t.items = t.items.filter(x => x !== it); data.temas[n].items.push(it); save(); } break; }
-    case 'del': if (confirm('¿Borrar propuesta?')) { t.items = t.items.filter(x => x !== it); save(); } break;
+    case 'del': if (confirm('¿Borrar propuesta?')) {
+      if (editingId === it.id) editingId = null;
+      if (addingMejoraId === it.id) addingMejoraId = null;
+      if (editingMejora && editingMejora.itemId === it.id) editingMejora = null;
+      t.items = t.items.filter(x => x !== it); save();
+    } break;
   }
+});
+
+$('#app').addEventListener('dblclick', e => {
+  const mRow = e.target.closest('.mejora');
+  if (mRow && e.target.closest('.m-txt')) {
+    const row = e.target.closest('.item');
+    openEditMejora(row.dataset.i, mRow.dataset.m);
+    return;
+  }
+  const row = e.target.closest('.item'); if (!row || editingId === row.dataset.i) return;
+  if (e.target.closest('.desc')) openEdit(row.dataset.i, 'descripcion');
+  else if (e.target.closest('.tit')) openEdit(row.dataset.i, 'titulo');
+});
+
+$('#app').addEventListener('keydown', e => {
+  const formEd = e.target.closest('form.edit');
+  if (formEd) {
+    if (e.key === 'Escape') { editingId = null; render(); }
+    else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); formEd.requestSubmit(); }
+    return;
+  }
+  const formM = e.target.closest('form.m-edit');
+  if (formM && e.key === 'Escape') { editingMejora = null; render(); return; }
+  const formAddM = e.target.closest('form.add-m');
+  if (formAddM && e.key === 'Escape') { addingMejoraId = null; render(); }
 });
 
 $('#app').addEventListener('submit', e => {
   e.preventDefault();
-  const t = data.temas.find(x => x.id === e.target.closest('.tema').dataset.t), fd = new FormData(e.target);
-  t.items.push({ id: uid(), titulo: fd.get('titulo').trim(), descripcion: fd.get('descripcion').trim(), consideracion: fd.get('consideracion').trim(), hecho: false });
+  const form = e.target;
+  const t = data.temas.find(x => x.id === form.closest('.tema').dataset.t), fd = new FormData(form);
+  if (form.dataset.act === 'saveEd') {
+    const it = t.items.find(x => x.id === form.closest('.item').dataset.i);
+    const ti = fd.get('titulo').trim();
+    if (!ti) return;
+    Object.assign(it, { titulo: ti, descripcion: fd.get('descripcion').trim() });
+    editingId = null; save(); return;
+  }
+  if (form.dataset.act === 'addM') {
+    const it = t.items.find(x => x.id === form.closest('.item').dataset.i);
+    const texto = fd.get('texto').trim();
+    if (!texto) return;
+    it.mejoras.push({ id: uid(), texto, hecho: false });
+    addingMejoraId = it.id;
+    save();
+    const el = $(`#app .item[data-i="${CSS.escape(it.id)}"] form.add-m input[name="texto"]`);
+    if (el) el.focus();
+    return;
+  }
+  if (form.dataset.act === 'saveM') {
+    const it = t.items.find(x => x.id === form.closest('.item').dataset.i);
+    const m = it.mejoras.find(x => x.id === form.closest('.mejora').dataset.m);
+    const texto = fd.get('texto').trim();
+    if (!texto) return;
+    m.texto = texto;
+    editingMejora = null;
+    save();
+    return;
+  }
+  const mejoras = String(fd.get('mejoras') ?? '')
+    .split('\n').map(s => s.trim()).filter(Boolean)
+    .map(texto => ({ id: uid(), texto, hecho: false }));
+  t.items.push({ id: uid(), titulo: fd.get('titulo').trim(), descripcion: fd.get('descripcion').trim(), mejoras, hecho: false });
   save();
 });
 
@@ -166,7 +349,7 @@ $('#menu').addEventListener('click', e => {
   if (fmt === 'js') download('propuestas.js', 'window.PROPUESTAS = ' + JSON.stringify(data, null, 2) + ';\n', 'text/javascript');
   else download('Propuestas.md', '# Propuestas\n\n' + data.temas.map(t =>
     `## ${t.nombre}\n` + t.items.map(i => `- [${i.hecho ? 'x' : ' '}] **${i.titulo}**${i.descripcion ? ': ' + i.descripcion.replace(/\n/g, ' ') : ''}` +
-      (i.consideracion ? `\n     *Consideración*: ${i.consideracion.replace(/\n/g, ' ')}` : '')).join('\n') + '\n').join('\n'), 'text/markdown');
+      (i.mejoras.length ? `\n     *Mejoras*:\n` + i.mejoras.map(m => `     - [${m.hecho ? 'x' : ' '}] ${m.texto.replace(/\n/g, ' ')}`).join('\n') : '')).join('\n') + '\n').join('\n'), 'text/markdown');
   if (fmt === 'js') { base = JSON.parse(JSON.stringify(data)); render(); }
 });
 
@@ -176,11 +359,19 @@ $('#file').onchange = async e => {
   try {
     const txt = (await f.text()).trim().replace(/^window\.PROPUESTAS\s*=\s*/, '').replace(/;\s*$/, '');
     const d = JSON.parse(txt); if (!Array.isArray(d.temas)) throw 0;
-    if (confirm('Esto reemplaza los datos actuales. ¿Continuar?')) { data = d; save(); toast('Importado'); }
+    if (confirm('Esto reemplaza los datos actuales. ¿Continuar?')) {
+      editingId = null; addingMejoraId = null; editingMejora = null;
+      data = normalize(d); save(); toast('Importado');
+    }
   } catch { alert('Archivo inválido'); }
   e.target.value = '';
 };
-$('#reset').onclick = () => { if (confirm('¿Descartar cambios locales y volver a data/propuestas.js?')) { data = JSON.parse(JSON.stringify(base)); localStorage.removeItem(KEY); render(); } };
+$('#reset').onclick = () => {
+  if (confirm('¿Descartar cambios locales y volver a data/propuestas.js?')) {
+    editingId = null; addingMejoraId = null; editingMejora = null;
+    data = JSON.parse(JSON.stringify(base)); localStorage.removeItem(KEY); render();
+  }
+};
 
 render();
 </script>

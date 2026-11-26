@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador Agéntico — agents_linux</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #131722;
+    --card: #191f2e;
+    --bd: #273045;
+    --tx: #e6ebf5;
+    --mu: #8e9ab3;
+    --ac: #6ea8fe;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --purp: #c084fc;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13.5px/1.45 system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--tx); }
+  header.top {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    padding: 12px 18px; border-bottom: 1px solid var(--bd); background: var(--panel);
+  }
+  header.top h1 { margin: 0; font-size: 17px; letter-spacing: -0.01em; }
+  header.top .sub { color: var(--mu); font-size: 12px; flex: 1; min-width: 240px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--bd); background: var(--card); }
+  .pill.IDLE { color: var(--mu); }
+  .pill.RUNNING { color: var(--ac); border-color: var(--ac); }
+  .pill.WAITING_USER { color: var(--warn); border-color: var(--warn); }
+  .pill.DONE { color: var(--ok); border-color: var(--ok); }
+  .pill.BLOCKED, .pill.STOPPED { color: var(--bad); border-color: var(--bad); }
+
+  button, select, input, textarea {
+    background: #10141f; color: var(--tx); border: 1px solid var(--bd);
+    border-radius: 6px; padding: 6px 10px; font: inherit;
+  }
+  button { cursor: pointer; background: var(--card); transition: border-color .15s, background .15s; }
+  button:hover:not(:disabled) { border-color: var(--ac); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.pri { background: var(--ac); color: #091224; border-color: var(--ac); font-weight: 600; }
+  button.warn { border-color: var(--warn); color: var(--warn); }
+  button.ok { background: var(--ok); color: #052010; border-color: var(--ok); font-weight: 600; }
+
+  .layout {
+    display: grid; grid-template-columns: 340px minmax(380px, 1fr) 410px;
+    gap: 12px; padding: 12px; height: calc(100vh - 58px); min-height: 640px;
+  }
+  @media (max-width: 1200px) { .layout { grid-template-columns: 1fr; height: auto; } }
+
+  .col {
+    background: var(--panel); border: 1px solid var(--bd); border-radius: 10px;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .col-h {
+    padding: 10px 12px; border-bottom: 1px solid var(--bd);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-weight: 600; font-size: 13px; background: rgba(255,255,255,0.02);
+  }
+  .scroll { padding: 12px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+
+  .sec { background: var(--card); border: 1px solid var(--bd); border-radius: 8px; padding: 10px; display: grid; gap: 8px; }
+  .sec h3 { margin: 0; font-size: 12.5px; color: var(--ac); text-transform: uppercase; letter-spacing: .04em; }
+  label.fld { display: grid; gap: 3px; font-size: 12px; color: var(--mu); }
+  label.chk { display: flex; align-items: center; gap: 7px; font-size: 12.5px; cursor: pointer; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .presets { display: grid; gap: 5px; }
+  .preset-btn {
+    text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 9px; font-size: 12.5px;
+  }
+  .preset-btn.active { border-color: var(--ac); background: rgba(110,168,254,.12); }
+  .tag { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: #0f131d; border: 1px solid var(--bd); color: var(--mu); }
+
+  .task-card {
+    border: 1px solid var(--bd); border-radius: 6px; padding: 8px; background: #121723;
+    display: grid; gap: 6px; font-size: 12px;
+  }
+  .task-top { display: flex; align-items: center; gap: 6px; }
+  .task-top strong { color: var(--ac); }
+
+  /* Centro: controles + SVG + ask_question */
+  .controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .graph-box {
+    background: #0d111a; border: 1px solid var(--bd); border-radius: 8px; padding: 8px;
+  }
+  svg#flow { width: 100%; height: auto; display: block; }
+  .node rect { fill: #171e2e; stroke: #33415c; stroke-width: 1.6; rx: 8; transition: all .2s; }
+  .node text { fill: #dbe4f3; font-size: 11px; font-family: system-ui, sans-serif; pointer-events: none; }
+  .node .sub { fill: #8e9ab3; font-size: 9.5px; }
+  .node.active rect { fill: #1c2c4a; stroke: var(--ac); stroke-width: 2.6; filter: drop-shadow(0 0 8px rgba(110,168,254,.45)); }
+  .node.waiting rect { stroke: var(--warn); stroke-width: 2.4; }
+  .node.blocked rect { stroke: var(--bad); stroke-width: 2.4; }
+  .edge { stroke: #33415c; stroke-width: 1.5; fill: none; marker-end: url(#arr); }
+  .edge.active { stroke: var(--ac); stroke-width: 2.5; marker-end: url(#arr-ac); }
+
+  .ask-box {
+    border: 1px solid var(--warn); background: rgba(251,191,36,.08);
+    border-radius: 8px; padding: 12px; display: grid; gap: 8px;
+  }
+  .ask-box h4 { margin: 0; color: var(--warn); font-size: 13px; }
+  .ask-box pre { margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 12.5px; color: var(--tx); }
+  .ask-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .kpi-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .kpi { background: var(--card); border: 1px solid var(--bd); border-radius: 6px; padding: 6px 8px; }
+  .kpi .k { font-size: 10.5px; color: var(--mu); }
+  .kpi .v { font-size: 13px; font-weight: 700; margin-top: 2px; }
+
+  /* Derecha: tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--bd); background: rgba(255,255,255,0.02); }
+  .tab { flex: 1; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; padding: 9px 6px; font-size: 12px; color: var(--mu); }
+  .tab.active { color: var(--ac); border-bottom-color: var(--ac); font-weight: 600; }
+
+  .msg { border: 1px solid var(--bd); border-radius: 7px; padding: 8px; background: var(--card); display: grid; gap: 4px; }
+  .msg-h { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--mu); gap: 6px; }
+  .msg-h .route { color: var(--tx); font-weight: 600; }
+  .msg pre { margin: 0; white-space: pre-wrap; font: 11.5px/1.4 ui-monospace, monospace; color: #b9c5dc; background: #0e121b; padding: 6px; border-radius: 5px; max-height: 150px; overflow: auto; }
+  .msg.ask { border-color: rgba(251,191,36,.5); }
+  .msg.schedule { border-color: rgba(192,132,252,.5); }
+
+  table.ws { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.ws th, table.ws td { border: 1px solid var(--bd); padding: 5px 6px; text-align: left; }
+  table.ws th { background: #101521; color: var(--mu); }
+  pre.code { margin: 0; white-space: pre-wrap; font: 11.5px/1.4 ui-monospace, monospace; background: #0d111a; border: 1px solid var(--bd); border-radius: 6px; padding: 8px; }
+
+  .inv { display: flex; align-items: flex-start; gap: 8px; padding: 7px 8px; border: 1px solid var(--bd); border-radius: 6px; background: var(--card); font-size: 12px; }
+  .inv .dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .inv.ok .dot { background: var(--ok); }
+  .inv.warn .dot { background: var(--warn); }
+  .inv.fail .dot { background: var(--bad); }
+
+  .toast { position: fixed; bottom: 16px; right: 16px; background: var(--ok); color: #041d0d; padding: 8px 14px; border-radius: 6px; font-weight: 600; display: none; z-index: 20; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Simulador de Interacción Agéntica — <code>agents_linux</code></h1>
+  <div class="sub">Modelo interactivo de <code>orchestrator</code> → <code>planner</code> → <code>build-orquestor-cli</code> → <code>verifier</code> → <code>version-control</code>. Exporta <code>scenario.json</code> y <code>trace.json</code>.</div>
+  <span id="statusPill" class="pill IDLE">IDLE</span>
+  <button id="btnExportScenario">Exportar scenario.json</button>
+  <button id="btnExportTrace">Exportar trace.json</button>
+  <button id="btnImport">Importar JSON</button>
+  <input id="fileInput" type="file" accept=".json" hidden>
+</header>
+
+<div class="layout">
+  <!-- COLUMNA IZQUIERDA: ESCENARIOS Y FAULT INJECTION -->
+  <section class="col">
+    <div class="col-h">
+      <span>1. Escenario y Fallos</span>
+      <button id="btnApplyReset" class="pri" style="padding:4px 9px;font-size:12px;">Aplicar y Reiniciar</button>
+    </div>
+    <div class="scroll">
+      <div class="sec">
+        <h3>Golden Suite (Presets)</h3>
+        <div id="presets" class="presets"></div>
+        <div id="presetSummary" style="font-size:12px;color:var(--mu);"></div>
+      </div>
+
+      <div class="sec">
+        <h3>Modo de Usuario & Alcance</h3>
+        <label class="chk"><input id="cfgInteractive" type="checkbox" checked> Modo interactivo (responder <code>ask_question</code>)</label>
+        <div class="row2">
+          <label class="fld">UI Verification
+            <select id="cfgUi"><option value="web">web (playwright-cli)</option><option value="none">none</option></select>
+          </label>
+          <label class="fld">Final Checks
+            <select id="cfgFinalChecks"><option value="passed">passed</option><option value="failed">failed</option></select>
+          </label>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>Planner & Descubrimiento</h3>
+        <div class="row2">
+          <label class="chk"><input id="cfgRag" type="checkbox"> <code>rag-json</code> OK</label>
+          <label class="chk"><input id="cfgAmbig" type="checkbox"> Ambigüedad crítica</label>
+        </div>
+        <div class="row2">
+          <label class="fld">Archivos mapa
+            <input id="cfgMapFiles" type="number" min="1" max="5000">
+          </label>
+          <label class="fld">Tamaño KB
+            <input id="cfgMapKb" type="number" min="1" max="5000">
+          </label>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>Tasks & Workers <code>agy</code></h3>
+        <div id="tasksEditor" style="display:grid;gap:6px;"></div>
+      </div>
+
+      <div class="sec">
+        <h3>Verifier & Version Control</h3>
+        <div class="row2">
+          <label class="fld">Verifier (1.º run)
+            <select id="cfgVer1">
+              <option value="VERIFIED">VERIFIED</option>
+              <option value="FAILED">FAILED</option>
+              <option value="BLOCKED">BLOCKED</option>
+              <option value="SKIPPED">SKIPPED</option>
+            </select>
+          </label>
+          <label class="fld">Verifier (2.º run)
+            <select id="cfgVer2">
+              <option value="VERIFIED">VERIFIED</option>
+              <option value="FAILED">FAILED</option>
+              <option value="BLOCKED">BLOCKED</option>
+            </select>
+          </label>
+        </div>
+        <div class="row2">
+          <label class="fld">VC Pre-check
+            <select id="cfgVcPre">
+              <option value="clean">clean</option>
+              <option value="sensitive_file">sensitive_file (.env)</option>
+              <option value="pre_staged">pre_staged (dirty index)</option>
+            </select>
+          </label>
+          <label class="fld">VC Commit / Push
+            <select id="cfgVcPush">
+              <option value="ok">push ok</option>
+              <option value="no_upstream_ok">sin upstream (-u)</option>
+              <option value="detached_head">detached HEAD</option>
+              <option value="push_error">push rejected</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COLUMNA CENTRO: GRAFO VIVO + CONTROLES + ASK_QUESTION -->
+  <section class="col">
+    <div class="col-h">
+      <span>2. Flujo en Vivo</span>
+      <div class="controls">
+        <button id="btnStep" class="pri">▶ Siguiente paso</button>
+        <button id="btnAuto">⏩ Auto-Play</button>
+        <button id="btnReset">⏮ Reiniciar</button>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="kpi-bar">
+        <div class="kpi"><div class="k">Paso / Tiempo virtual</div><div id="kpiTime" class="v">0 / 0s</div></div>
+        <div class="kpi"><div class="k">committedTasks</div><div id="kpiCommitted" class="v">none</div></div>
+        <div class="kpi"><div class="k">verifierDone</div><div id="kpiVerifier" class="v">false</div></div>
+        <div class="kpi"><div class="k">Re-plan cycles</div><div id="kpiReplan" class="v">0 / 1</div></div>
+      </div>
+
+      <div class="graph-box">
+        <svg id="flow" viewBox="0 0 680 340">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#47587a"/>
+            </marker>
+            <marker id="arr-ac" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#6ea8fe"/>
+            </marker>
+          </defs>
+
+          <!-- Edges -->
+          <path id="edge-user->orchestrator" class="edge" d="M 120 65 L 230 65"/>
+          <path id="edge-orchestrator->user" class="edge" d="M 230 82 L 120 82"/>
+          <path id="edge-orchestrator->planner" class="edge" d="M 380 55 L 490 55"/>
+          <path id="edge-planner->orchestrator" class="edge" d="M 490 75 L 380 75"/>
+          <path id="edge-orchestrator->build" class="edge" d="M 305 100 L 305 150"/>
+          <path id="edge-build->orchestrator" class="edge" d="M 325 150 L 325 100"/>
+          <path id="edge-build->workers" class="edge" d="M 390 185 L 490 185"/>
+          <path id="edge-orchestrator->verifier" class="edge" d="M 275 100 L 145 255"/>
+          <path id="edge-verifier->orchestrator" class="edge" d="M 165 262 L 290 100"/>
+          <path id="edge-orchestrator->vc" class="edge" d="M 340 100 L 450 255"/>
+          <path id="edge-vc->orchestrator" class="edge" d="M 432 262 L 325 100"/>
+
+          <!-- Nodes -->
+          <g id="node-user" class="node" transform="translate(15,40)">
+            <rect width="105" height="58"/>
+            <text x="52" y="25" text-anchor="middle" font-weight="700">Usuario</text>
+            <text x="52" y="42" text-anchor="middle" class="sub">ask_question</text>
+          </g>
+
+          <g id="node-orchestrator" class="node" transform="translate(230,38)">
+            <rect width="150" height="62"/>
+            <text x="75" y="24" text-anchor="middle" font-weight="700">orchestrator</text>
+            <text x="75" y="40" text-anchor="middle" class="sub">mainAgent · watchdog 300/780s</text>
+          </g>
+
+          <g id="node-planner" class="node" transform="translate(490,38)">
+            <rect width="165" height="62"/>
+            <text x="82" y="24" text-anchor="middle" font-weight="700">planner</text>
+            <text x="82" y="40" text-anchor="middle" class="sub">rag-json / mapper · delta</text>
+          </g>
+
+          <g id="node-build-orquestor-cli" class="node" transform="translate(220,152)">
+            <rect width="170" height="62"/>
+            <text x="85" y="24" text-anchor="middle" font-weight="700">build-orquestor-cli</text>
+            <text x="85" y="40" text-anchor="middle" class="sub">flash · waves (≤5) · 600s</text>
+          </g>
+
+          <g id="node-workers" class="node" transform="translate(490,152)">
+            <rect width="165" height="62"/>
+            <text x="82" y="24" text-anchor="middle" font-weight="700">agy CLI workers</text>
+            <text x="82" y="40" text-anchor="middle" class="sub">--sandbox --output-format json</text>
+          </g>
+
+          <g id="node-verifier" class="node" transform="translate(40,256)">
+            <rect width="170" height="62"/>
+            <text x="85" y="24" text-anchor="middle" font-weight="700">verifier</text>
+            <text x="85" y="40" text-anchor="middle" class="sub">playwright-cli -s=verify</text>
+          </g>
+
+          <g id="node-version-control" class="node" transform="translate(385,256)">
+            <rect width="175" height="62"/>
+            <text x="87" y="24" text-anchor="middle" font-weight="700">version-control</text>
+            <text x="87" y="40" text-anchor="middle" class="sub">flash_lite · git add/commit/push</text>
+          </g>
+
+          <g id="node-test" class="node" transform="translate(575,260)" opacity="0.72">
+            <rect width="95" height="54" stroke-dasharray="4 3"/>
+            <text x="47" y="23" text-anchor="middle" font-weight="700">test</text>
+            <text x="47" y="39" text-anchor="middle" class="sub">independiente</text>
+          </g>
+        </svg>
+      </div>
+
+      <div id="askContainer"></div>
+      <div id="lastEventBox" class="sec" style="display:none;">
+        <h3>Última transición</h3>
+        <div id="lastEventText" style="font-size:12.5px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COLUMNA DERECHA: INSPECTOR -->
+  <section class="col">
+    <div class="tabs">
+      <button class="tab active" data-tab="ws">workers-status.md</button>
+      <button class="tab" data-tab="log">Mensajes (<span id="msgCount">0</span>)</button>
+      <button class="tab" data-tab="inv">Invariantes</button>
+    </div>
+    <div id="tabBody" class="scroll"></div>
+  </section>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="scenarios.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  let activePresetId = window.SIM_SCENARIOS[0].id;
+  let currentConfig = JSON.parse(JSON.stringify(window.SIM_SCENARIOS[0].config));
+  let sim = new window.AgentSimEngine(currentConfig);
+  let activeTab = 'ws';
+  let autoTimer = null;
+
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 2200);
+  }
+
+  function renderPresets() {
+    $('#presets').innerHTML = window.SIM_SCENARIOS.map(sc => `
+      <button class="preset-btn ${sc.id === activePresetId ? 'active' : ''}" data-preset="${sc.id}">
+        <span>${esc(sc.name)}</span>
+        <span class="tag">${esc(sc.badge)}</span>
+      </button>
+    `).join('');
+    const cur = window.SIM_SCENARIOS.find(s => s.id === activePresetId);
+    $('#presetSummary').textContent = cur ? cur.summary : '';
+  }
+
+  function syncFormFromConfig() {
+    $('#cfgInteractive').checked = !!currentConfig.interactiveUser;
+    $('#cfgUi').value = currentConfig.uiVerification;
+    $('#cfgFinalChecks').value = currentConfig.build.finalChecksResult;
+    $('#cfgRag').checked = !!currentConfig.planner.ragJsonAvailable;
+    $('#cfgAmbig').checked = !!currentConfig.planner.hasCriticalAmbiguity;
+    $('#cfgMapFiles').value = currentConfig.planner.mapFilesCount;
+    $('#cfgMapKb').value = currentConfig.planner.mapSizeKb;
+    $('#cfgVer1').value = currentConfig.verifier.firstRunStatus;
+    $('#cfgVer2').value = currentConfig.verifier.secondRunStatus;
+    $('#cfgVcPre').value = currentConfig.versionControl.preCheck;
+    $('#cfgVcPush').value = currentConfig.versionControl.pushBehavior;
+
+    $('#tasksEditor').innerHTML = currentConfig.tasks.map((t, idx) => `
+      <div class="task-card" data-tidx="${idx}">
+        <div class="task-top">
+          <strong>${esc(t.id)}</strong>
+          <span class="tag">deps: ${esc((t.dependsOn || []).join(',') || 'none')}</span>
+          <span class="tag">${esc(t.complexity)}</span>
+          <select class="t-beh" style="margin-left:auto;padding:3px 6px;font-size:11.5px;">
+            <option value="DONE" ${t.behavior === 'DONE' ? 'selected' : ''}>DONE</option>
+            <option value="FAILED_ONCE" ${t.behavior === 'FAILED_ONCE' ? 'selected' : ''}>FAILED x1 (retry OK)</option>
+            <option value="FAILED_TWICE" ${t.behavior === 'FAILED_TWICE' ? 'selected' : ''}>FAILED x2</option>
+            <option value="BLOCKED" ${t.behavior === 'BLOCKED' ? 'selected' : ''}>BLOCKED</option>
+            <option value="OUT_OF_SCOPE" ${t.behavior === 'OUT_OF_SCOPE' ? 'selected' : ''}>Fuera de scope</option>
+            <option value="STALL" ${t.behavior === 'STALL' ? 'selected' : ''}>Stall (Watchdog)</option>
+          </select>
+        </div>
+        <div style="color:var(--mu);">Files: <code>${esc((t.writableFiles || []).join(', '))}</code></div>
+      </div>
+    `).join('');
+  }
+
+  function readConfigFromForm() {
+    currentConfig.interactiveUser = $('#cfgInteractive').checked;
+    currentConfig.uiVerification = $('#cfgUi').value;
+    currentConfig.build.finalChecksResult = $('#cfgFinalChecks').value;
+    currentConfig.planner.ragJsonAvailable = $('#cfgRag').checked;
+    currentConfig.planner.hasCriticalAmbiguity = $('#cfgAmbig').checked;
+    currentConfig.planner.mapFilesCount = Number($('#cfgMapFiles').value) || 48;
+    currentConfig.planner.mapSizeKb = Number($('#cfgMapKb').value) || 18;
+    currentConfig.verifier.firstRunStatus = $('#cfgVer1').value;
+    currentConfig.verifier.secondRunStatus = $('#cfgVer2').value;
+    currentConfig.versionControl.preCheck = $('#cfgVcPre').value;
+    currentConfig.versionControl.pushBehavior = $('#cfgVcPush').value;
+    document.querySelectorAll('#tasksEditor .task-card').forEach(el => {
+      const idx = Number(el.dataset.tidx);
+      currentConfig.tasks[idx].behavior = el.querySelector('.t-beh').value;
+    });
+  }
+
+  function stopAuto() {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      $('#btnAuto').textContent = '⏩ Auto-Play';
+    }
+  }
+
+  function renderAll() {
+    const pill = $('#statusPill');
+    pill.textContent = sim.status;
+    pill.className = `pill ${sim.status}`;
+
+    $('#kpiTime').textContent = `${sim.stepCount} / ${sim.virtualSeconds}s`;
+    $('#kpiCommitted').textContent = sim.committedTasks.length ? sim.committedTasks.join(', ') : 'none';
+    $('#kpiVerifier').textContent = String(sim.verifierDone);
+    $('#kpiReplan').textContent = `${sim.replanCycles} / 1`;
+    $('#msgCount').textContent = String(sim.messages.length);
+
+    // Actualizar nodos y aristas del SVG
+    document.querySelectorAll('svg#flow .node').forEach(n => {
+      n.classList.remove('active', 'waiting', 'blocked');
+    });
+    const activeEl = document.getElementById(`node-${sim.activeNode}`);
+    if (activeEl) {
+      activeEl.classList.add('active');
+      if (sim.status === 'WAITING_USER') activeEl.classList.add('waiting');
+      if (sim.status === 'BLOCKED') activeEl.classList.add('blocked');
+    }
+    document.querySelectorAll('svg#flow .edge').forEach(e => e.classList.remove('active'));
+    if (sim.activeEdge) {
+      const edgeEl = document.getElementById(`edge-${sim.activeEdge}`);
+      if (edgeEl) edgeEl.classList.add('active');
+    }
+
+    // Caja ask_question
+    if (sim.pendingQuestion) {
+      $('#askContainer').innerHTML = `
+        <div class="ask-box">
+          <h4>⚠ Esperando respuesta del usuario (<code>ask_question</code>)</h4>
+          <pre>${esc(sim.pendingQuestion.title)}</pre>
+          <div class="ask-opts">
+            ${sim.pendingQuestion.options.map((opt, i) => `
+              <button class="${i === 0 ? 'pri' : ''}" data-ans="${esc(opt)}">${esc(opt)}</button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } else {
+      $('#askContainer').innerHTML = '';
+    }
+
+    // Último evento
+    const last = sim.messages[sim.messages.length - 1];
+    if (last) {
+      $('#lastEventBox').style.display = 'grid';
+      $('#lastEventText').innerHTML = `<strong>#${last.step} [${esc(last.from)} → ${esc(last.to)}]</strong> ${esc(last.summary)}`;
+    } else {
+      $('#lastEventBox').style.display = 'none';
+    }
+
+    renderRightTab();
+  }
+
+  function renderRightTab() {
+    const body = $('#tabBody');
+    if (activeTab === 'ws') {
+      const rows = sim.planTasks.map(t => {
+        const st = sim.taskStates[t.id] || { status: '⏳ PENDING', checks: '-', model: '-' };
+        return `<tr>
+          <td><code>${esc(t.id)}</code></td>
+          <td><code>${esc((t.dependsOn || []).join(', ') || 'none')}</code></td>
+          <td>${esc(st.status)}</td>
+          <td><code>${esc(st.model)}</code></td>
+          <td>${esc(st.checks)}</td>
+        </tr>`;
+      }).join('');
+      body.innerHTML = `
+        <div class="sec">
+          <h3>Tabla en vivo (<code>workers-status.md</code>)</h3>
+          ${sim.planTasks.length ? `
+            <table class="ws">
+              <thead><tr><th>Task</th><th>Deps</th><th>Status</th><th>Model</th><th>Checks</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+            <div><strong>Final Checks:</strong> ${esc(sim.finalChecks)}</div>
+          ` : '<div style="color:var(--mu)">Ejecutá el simulador hasta aprobar el plan para inicializar <code>workers-status.md</code>.</div>'}
+        </div>
+        <div class="sec">
+          <h3>Markdown exacto del artefacto</h3>
+          <pre class="code">${esc(sim.getWorkersStatusMarkdown())}</pre>
+        </div>
+      `;
+      return;
+    }
+
+    if (activeTab === 'log') {
+      const items = [...sim.messages].reverse().map(m => `
+        <div class="msg ${esc(m.kind)}">
+          <div class="msg-h">
+            <span class="route">#${m.step} · ${esc(m.from)} → ${esc(m.to)}</span>
+            <span>${esc(m.kind)} · t=${m.t}s</span>
+          </div>
+          <div>${esc(m.summary)}</div>
+          ${m.payload ? `<pre>${esc(m.payload)}</pre>` : ''}
+        </div>
+      `).join('');
+      body.innerHTML = items || '<div style="color:var(--mu)">Sin mensajes todavía. Presioná "▶ Siguiente paso".</div>';
+      return;
+    }
+
+    // inv
+    body.innerHTML = `
+      <div class="sec">
+        <h3>Aserciones de protocolo (<code>agents_linux</code>)</h3>
+        ${sim.invariants.map(inv => `
+          <div class="inv ${esc(inv.status)}">
+            <span class="dot"></span>
+            <div>
+              <div><strong>${esc(inv.label)}</strong></div>
+              <div style="color:var(--mu);font-size:11.5px;">${esc(inv.detail)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="sec">
+        <h3>Watchdogs activos</h3>
+        ${sim.activeWatchdogs.length
+          ? sim.activeWatchdogs.map(w => `<div><code>${esc(w.owner)}</code> → ${esc(w.target)} (${w.durationSec}s)</div>`).join('')
+          : '<div style="color:var(--mu)">Ninguno activo</div>'}
+      </div>
+    `;
+  }
+
+  function downloadJson(filename, obj) {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // Eventos
+  $('#presets').addEventListener('click', e => {
+    const btn = e.target.closest('[data-preset]');
+    if (!btn) return;
+    stopAuto();
+    activePresetId = btn.dataset.preset;
+    const sc = window.SIM_SCENARIOS.find(s => s.id === activePresetId);
+    currentConfig = JSON.parse(JSON.stringify(sc.config));
+    sim = new window.AgentSimEngine(currentConfig);
+    renderPresets();
+    syncFormFromConfig();
+    renderAll();
+    toast(`Escenario cargado: ${sc.name}`);
+  });
+
+  $('#btnApplyReset').addEventListener('click', () => {
+    stopAuto();
+    readConfigFromForm();
+    const check = window.validateScenarioConfig(currentConfig);
+    if (!check.valid) {
+      alert('Escenario inválido:\n' + check.errors.join('\n'));
+      return;
+    }
+    sim = new window.AgentSimEngine(currentConfig);
+    renderAll();
+    toast('Configuración aplicada y simulación reiniciada');
+  });
+
+  $('#btnStep').addEventListener('click', () => {
+    if (sim.status === 'IDLE') readConfigFromForm();
+    sim.step();
+    renderAll();
+  });
+
+  $('#btnReset').addEventListener('click', () => {
+    stopAuto();
+    readConfigFromForm();
+    sim = new window.AgentSimEngine(currentConfig);
+    renderAll();
+  });
+
+  $('#btnAuto').addEventListener('click', () => {
+    if (autoTimer) {
+      stopAuto();
+      return;
+    }
+    if (sim.status === 'IDLE') readConfigFromForm();
+    $('#btnAuto').textContent = '⏸ Pausar';
+    autoTimer = setInterval(() => {
+      const moved = sim.step();
+      renderAll();
+      if (!moved) stopAuto();
+    }, 550);
+  });
+
+  $('#askContainer').addEventListener('click', e => {
+    const btn = e.target.closest('[data-ans]');
+    if (!btn) return;
+    sim.answerQuestion(btn.dataset.ans);
+    renderAll();
+  });
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeTab = tab.dataset.tab;
+      renderRightTab();
+    });
+  });
+
+  $('#btnExportScenario').addEventListener('click', () => {
+    readConfigFromForm();
+    downloadJson(`scenario-${activePresetId}.json`, currentConfig);
+    toast('Exportado scenario.json');
+  });
+
+  $('#btnExportTrace').addEventListener('click', () => {
+    downloadJson(`trace-${activePresetId}.json`, sim.exportTrace());
+    toast('Exportado trace.json');
+  });
+
+  $('#btnImport').addEventListener('click', () => $('#fileInput').click());
+  $('#fileInput').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      const cfg = parsed.config || parsed;
+      const v = window.validateScenarioConfig(cfg);
+      if (!v.valid) throw new Error(v.errors.join('; '));
+      stopAuto();
+      currentConfig = cfg;
+      sim = new window.AgentSimEngine(currentConfig);
+      if (Array.isArray(parsed.events)) {
+        sim.messages = parsed.events;
+        sim.status = parsed.finalStatus || 'DONE';
+        sim.committedTasks = parsed.committedTasks || [];
+        sim.verifierDone = !!parsed.verifierDone;
+        sim.replanCycles = parsed.replanCycles || 0;
+        sim.virtualSeconds = parsed.virtualSeconds || 0;
+        sim.stepCount = parsed.events.length;
+      }
+      syncFormFromConfig();
+      renderAll();
+      toast('JSON importado correctamente');
+    } catch (err) {
+      alert('Error al importar JSON: ' + err.message);
+    } finally {
+      e.target.value = '';
+    }
+  });
+
+  renderPresets();
+  syncFormFromConfig();
+  renderAll();
+})();
+</script>
+</body>
+</html>
